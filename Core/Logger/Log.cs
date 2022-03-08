@@ -1,0 +1,90 @@
+using System.Collections.Concurrent;
+
+namespace NursingBot.Logger
+{
+    public class NoRegisteredLoggerException : Exception
+    {
+        public static NoRegisteredLoggerException Instance => new();
+    }
+
+    public static class Log
+    {
+        public static LogLevel LogLevel
+        {
+            get => logLevel;
+            set => UpdateLogLevel(value);
+        }
+
+        private static LogLevel logLevel
+        #if DEBUG
+            = LogLevel.ALL;
+        #else
+            = LogLevel.ERROR;
+        #endif
+
+        private static readonly ConcurrentBag<ILogger> loggers = new();
+
+        public static async Task Add(ILogger logger)
+        {
+            await Task.Run(() => {
+                logger.LogLevel = logLevel;
+                loggers.Add(logger);
+            });
+        }
+
+        public static async Task Info(string message)
+        {
+            if (loggers.IsEmpty)
+            {
+                throw NoRegisteredLoggerException.Instance;
+            }
+
+            await Task.WhenAll(loggers.Select(l => l.Info(message)));
+        }
+
+        public static async Task Warn(string message)
+        {
+            if (loggers.IsEmpty)
+            {
+                throw NoRegisteredLoggerException.Instance;
+            }
+
+            await Task.WhenAll(loggers.Select(l => l.Warn(message)));
+        }
+
+        public static async Task Error(string message)
+        {
+            if (loggers.IsEmpty)
+            {
+                throw NoRegisteredLoggerException.Instance;
+            }
+
+            await Task.WhenAll(loggers.Select(l => l.Error(message)));
+        }
+
+        public static async Task Fatal(string message)
+        {
+            if (loggers.IsEmpty)
+            {
+                throw NoRegisteredLoggerException.Instance;
+            }
+
+            await Task.WhenAll(loggers.Select(l => l.Fatal(message)));
+        }
+
+        private static void UpdateLogLevel(LogLevel value)
+        {
+            if (loggers.IsEmpty)
+            {
+                throw NoRegisteredLoggerException.Instance;
+            }
+
+            logLevel = value;
+
+            foreach (var logger in loggers)
+            {
+                logger.LogLevel = value;
+            }
+        }
+    }
+}
