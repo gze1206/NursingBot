@@ -1,5 +1,7 @@
 using Discord;
+using Discord.Net;
 using Discord.WebSocket;
+using Newtonsoft.Json;
 using NursingBot.Logger;
 
 namespace NursingBot.Core
@@ -37,6 +39,48 @@ namespace NursingBot.Core
             
             await this.client.LoginAsync(TokenType.Bot, token);
             await this.client.StartAsync();
+
+            client.Ready += this.OnClientReady;
+        }
+
+        private async Task OnClientReady()
+        {
+            {
+                try
+                {
+                    var command = new SlashCommandBuilder()
+                        .WithName("gtest")
+                        .WithDescription("gtest");
+
+                    var guild = this.client.GetGuild(320908910426980352);
+                    await guild.CreateApplicationCommandAsync(command.Build());
+                }
+                catch (HttpException ex)
+                {
+                    var json = JsonConvert.SerializeObject(ex.Errors);
+                    await Log.Fatal($"{ex.Message}\n\t{json}");
+                }
+            }
+
+            {
+                try
+                {
+                    var command = new SlashCommandBuilder()
+                        .WithName("test")
+                        .WithDescription("test test test test test");
+
+                    await this.client.CreateGlobalApplicationCommandAsync(command.Build());
+                }
+                catch (HttpException ex)
+                {
+                    var json = JsonConvert.SerializeObject(ex.Errors);
+                    await Log.Fatal($"{ex.Message}\n\t{json}");
+                }
+                catch (Exception ex)
+                {
+                    await Log.Fatal($"{ex.Message}");
+                }
+            }
         }
     }
 }
