@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Newtonsoft.Json;
 
 namespace NursingBot.Logger
 {
@@ -71,6 +72,12 @@ namespace NursingBot.Logger
 
             await Task.WhenAll(loggers.Select(l => l.Fatal(message)));
         }
+
+        public static Task Fatal(Exception e)
+            => Fatal($"{e.Message}\n{e.StackTrace}");
+
+        public static Task Fatal(Discord.Net.HttpException e)
+            => Fatal($"{e.Message}\n{JsonConvert.SerializeObject(e.Errors, Formatting.Indented)}");
 
         private static void UpdateLogLevel(LogLevel value)
         {

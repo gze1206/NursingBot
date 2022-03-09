@@ -20,7 +20,17 @@ namespace NursingBot
                 #endif
                 
                 var bot = new Bot();
-                await bot.Initialize(DotNetEnv.Env.GetString("BOT_TOKEN"));
+                await bot
+                    // Yes or No
+                    .AddFeature(new Features.Random.YesOrNo())
+                    .AddMigration(new Features.Random.YesOrNoRegister())
+                    
+                    // Magic-8-Ball
+                    .AddFeature(new Features.Random.Magic8Ball())
+                    .AddMigration(new Features.Random.Magic8BallRegister())
+
+                    // Initialize bot
+                    .Initialize(DotNetEnv.Env.GetString("BOT_TOKEN"));
                 
                 await Task.Delay(-1);
             }
