@@ -26,10 +26,10 @@ namespace NursingBot.Features
 
                 if (cmd.Parameters.Count > 0)
                 {
-                    stringBuilder.Append("\n\n**매개 변수**");
+                    stringBuilder.Append("\n\n* **매개 변수**");
                     foreach (var param in cmd.Parameters)
                     {
-                        stringBuilder.Append($"\n* {param.Name} : {(param.IsOptional?"*(선택)* ":"")}{param.Summary}");
+                        stringBuilder.Append($"\n　　* {param.Name} : {(param.IsOptional?"*(선택)* ":"")}{param.Summary}");
                     }
                 }
 
