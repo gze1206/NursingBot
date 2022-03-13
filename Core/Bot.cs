@@ -43,8 +43,15 @@ namespace NursingBot.Core
             
             client.Ready += this.OnClientReady;
 
-            await this.client.LoginAsync(TokenType.Bot, token);
-            await this.client.StartAsync();
+            try
+            {
+                await this.client.LoginAsync(TokenType.Bot, token);
+                await this.client.StartAsync();
+            }
+            catch (Exception e)
+            {
+                await Log.Fatal(e);
+            }
         }
 
         private static async Task OnReceiveLog(LogMessage message)
