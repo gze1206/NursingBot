@@ -40,7 +40,7 @@ namespace NursingBot.Features.Random
         {
             var embed = new EmbedBuilder()
                 .WithTitle("질문에 대한 답입니다.")
-                .AddField("Question", command.Data.Options.FirstOrDefault()?.Value ?? "*(질문 없음. 어케함?)*")
+                .AddField("Question", command.Data.Options.First().Value)
                 .AddField("Answer", answers[NRandom.Next(answers.Length)])
                 .Build();
 

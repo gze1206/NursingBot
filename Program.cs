@@ -29,6 +29,10 @@ namespace NursingBot
                     .AddFeature(new Features.Random.Magic8Ball())
                     .AddMigration(new Features.Random.Magic8BallRegister())
 
+                    // Pick
+                    .AddFeature(new Features.Random.Pick())
+                    .AddMigration(new Features.Random.PickRegister())
+
                     // Initialize bot
                     .Initialize(DotNetEnv.Env.GetString("BOT_TOKEN"));
                 
