@@ -2,6 +2,14 @@ namespace NursingBot.Logger
 {
     public class ConsoleLogger : ILogger
     {
+        private static ConsoleColor ForegroundColor(LogLevel level) => level switch
+        {
+            LogLevel.INFO => ConsoleColor.DarkGray,
+            LogLevel.WARN => ConsoleColor.Yellow,
+            LogLevel.ERROR or LogLevel.FATAL => ConsoleColor.Red,
+            _ => ConsoleColor.White
+        };
+
         public LogLevel LogLevel { get; set; }
 
         public async Task Info(string message) => await this.Log(LogLevel.INFO, message);
@@ -21,7 +29,9 @@ namespace NursingBot.Logger
                     return;
                 }
 
+                Console.ForegroundColor = ForegroundColor(logLevel);
                 Console.WriteLine($"{logLevel} : {message}");
+                Console.ResetColor();
             });
         }
     }

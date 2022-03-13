@@ -1,24 +1,37 @@
-using System.Collections.Concurrent;
 using Discord;
+using Discord.Commands;
 using Discord.Net;
 using Discord.WebSocket;
-using Newtonsoft.Json;
-using NursingBot.Features;
 using NursingBot.Logger;
+using Microsoft.Extensions.DependencyInjection;
+using System.Reflection;
 
 namespace NursingBot.Core
 {
     public class Bot
     {
+        public CommandService CommandService { get; private set; }
+
+        private static readonly string botStatus = "'!help'로 명령어 목록을 볼 수 있다고 안내";
+
         private readonly DiscordSocketClient client;
-        private readonly Dictionary<string, IFeature> features = new();
-        private readonly List<IFeatureMigration> migrations = new();
+        private readonly IServiceProvider serviceProvider;
+        private readonly char commandPrefix = '!';
 
         public Bot()
         {
             this.client = new DiscordSocketClient();
+            this.CommandService = new CommandService(new CommandServiceConfig
+            {
+                LogLevel = LogSeverity.Info,
+
+                CaseSensitiveCommands = false,
+            });
+
             this.client.Log += OnReceiveLog;
-            this.client.SlashCommandExecuted += SlashCommandHandler;
+            this.CommandService.Log += OnReceiveLog;
+
+            this.serviceProvider = ConfigureServices();
         }
 
         public async Task Initialize(string token)
@@ -32,18 +45,6 @@ namespace NursingBot.Core
 
             await this.client.LoginAsync(TokenType.Bot, token);
             await this.client.StartAsync();
-        }
-
-        public Bot AddFeature(IFeature feature)
-        {
-            this.features.Add(feature.Name, feature);
-            return this;
-        }
-
-        public Bot AddMigration(IFeatureMigration migration)
-        {
-            this.migrations.Add(migration);
-            return this;
         }
 
         private static async Task OnReceiveLog(LogMessage message)
@@ -67,19 +68,21 @@ namespace NursingBot.Core
             });
         }
 
+        private static IServiceProvider ConfigureServices()
+        {
+            var map = new ServiceCollection();
+
+            return map.BuildServiceProvider();
+        }
+
         private async Task OnClientReady()
         {
-            // 등록된 모든 Migration을 수행
-            // SlashCommand를 등록하거나 제거하는 작업을 수행해야 함
             try
             {
-                var commandBag = new ConcurrentBag<ApplicationCommandProperties>();
+                await this.client.SetGameAsync(botStatus);
+                await this.CommandService.AddModulesAsync(Assembly.GetEntryAssembly(), this.serviceProvider);
 
-                await Task.WhenAll(
-                    this.migrations.Select(migration => migration.Migrate(this.client, commandBag))
-                );
-
-                await this.client.BulkOverwriteGlobalApplicationCommandsAsync(commandBag.ToArray());
+                this.client.MessageReceived += HandleCommandAsync;
             }
             catch (AggregateException e)
             {
@@ -97,26 +100,32 @@ namespace NursingBot.Core
             }
         }
 
-        private async Task SlashCommandHandler(SocketSlashCommand command)
+        private async Task HandleCommandAsync(SocketMessage data)
         {
-            if (!this.features.TryGetValue(command.CommandName, out var feature))
+            if (data is not SocketUserMessage msg)
             {
-                throw NoRegisteredFeatureException.Instance;
+                return;
             }
 
-            try
+            // 봇의 메세지에는 반응하지 않습니다.
+            if (msg.Author.Id == this.client.CurrentUser.Id || msg.Author.IsBot)
             {
-                await feature.ProcessCommand(command);
-            }
-            catch (HttpException e)
-            {
-                await Log.Fatal(e);
-            }
-            catch (Exception e)
-            {
-                await Log.Fatal(e);
+                return;
             }
 
+            // DM으로 받은 메세지에도 반응하지 않습니다.
+            if (msg.Channel.GetChannelType() == ChannelType.DM)
+            {
+                return;
+            }
+
+            int pos = 0;
+
+            if (msg.HasCharPrefix(commandPrefix, ref pos))
+            {
+                var context = new SocketCommandContext(this.client, msg);
+                await this.CommandService.ExecuteAsync(context, pos, this.serviceProvider);
+            }
         }
     }
 }
