@@ -10,10 +10,11 @@ namespace NursingBot.Core
 {
     public class Bot
     {
-        public CommandService CommandService { get; private set; }
-
+        public static readonly string DefaultCommandPrefix = "!";
+        
         private static readonly string botStatus = "'!help'로 명령어 목록을 볼 수 있다고 안내";
-        private static readonly string DefaultCommandPrefix = "!";
+
+        public CommandService CommandService { get; private set; }
 
         private readonly DiscordSocketClient client;
         private readonly IServiceProvider serviceProvider;
@@ -119,7 +120,7 @@ namespace NursingBot.Core
                 .WithTitle("실패")
                 .WithDescription(result.ErrorReason)
                 .Build();
-                
+
             await context.Message.ReplyAsync(embed: embed);
         }
 
