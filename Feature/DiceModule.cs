@@ -1,6 +1,6 @@
 using Discord;
 using Discord.Commands;
-
+using NursingBot.Features.Preconditions;
 using NRandom = NursingBot.Core.Random;
 
 namespace NursingBot.Features
@@ -15,6 +15,7 @@ namespace NursingBot.Features
         [Command("dice")]
         [Alias("d", "roll")]
         [Summary("다면체 주사위를 굴린 뒤 그 결과를 표시합니다.")]
+        [RequireRegister]
         public Task RollAsync([Summary("주사위를 표현하는 식입니다.\n예시 - 1d6+1")] string eval)
         {
             var tokens = eval

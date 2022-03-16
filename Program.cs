@@ -21,6 +21,8 @@ namespace NursingBot
                     DotNetEnv.Env.Load();
                 #endif
                 
+                await Database.Initialize(DotNetEnv.Env.GetString("DB_CONN"));
+
                 Bot = new Bot();
                 await Bot.Initialize(DotNetEnv.Env.GetString("BOT_TOKEN"));
                 

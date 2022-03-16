@@ -13,10 +13,10 @@ namespace NursingBot.Core
         public CommandService CommandService { get; private set; }
 
         private static readonly string botStatus = "'!help'로 명령어 목록을 볼 수 있다고 안내";
+        private static readonly string DefaultCommandPrefix = "!";
 
         private readonly DiscordSocketClient client;
         private readonly IServiceProvider serviceProvider;
-        private readonly char commandPrefix = '!';
 
         public Bot()
         {
@@ -90,6 +90,7 @@ namespace NursingBot.Core
                 await this.CommandService.AddModulesAsync(Assembly.GetEntryAssembly(), this.serviceProvider);
 
                 this.client.MessageReceived += HandleCommandAsync;
+                this.CommandService.CommandExecuted += OnCommandExecuted;
             }
             catch (AggregateException e)
             {
@@ -105,6 +106,21 @@ namespace NursingBot.Core
             {
                 await Log.Fatal(e);
             }
+        }
+
+        private async Task OnCommandExecuted(Optional<CommandInfo> commandInfo, ICommandContext context, IResult result)
+        {
+            if (result.IsSuccess)
+            {
+                return;
+            }
+
+            var embed = new EmbedBuilder()
+                .WithTitle("실패")
+                .WithDescription(result.ErrorReason)
+                .Build();
+                
+            await context.Message.ReplyAsync(embed: embed);
         }
 
         private async Task HandleCommandAsync(SocketMessage data)
@@ -126,9 +142,31 @@ namespace NursingBot.Core
                 return;
             }
 
+            var commandPrefix = string.Empty;
+
+            {
+                using var conn = await Database.Open();
+                using var cmd = conn.CreateCommand();
+
+                if (msg.Channel is SocketGuildChannel channel)
+                {
+                    cmd.CommandText = $"SELECT prefix FROM servers WHERE discordUID={channel.Guild.Id}";
+                    var reader = await cmd.ExecuteReaderAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        commandPrefix = reader.GetString(0);
+                    }
+                }
+            }
+
+            if (string.IsNullOrWhiteSpace(commandPrefix))
+            {
+                commandPrefix = DefaultCommandPrefix;
+            }
+
             int pos = 0;
 
-            if (msg.HasCharPrefix(commandPrefix, ref pos))
+            if (msg.HasStringPrefix(commandPrefix, ref pos))
             {
                 var context = new SocketCommandContext(this.client, msg);
                 await this.CommandService.ExecuteAsync(context, pos, this.serviceProvider);
