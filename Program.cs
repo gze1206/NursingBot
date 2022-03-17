@@ -5,8 +5,6 @@ namespace NursingBot
 {
     public class Program
     {
-        public static Bot? Bot { get; private set; }
-
         public static Task? Main(string[] _) => MainAsync();
 
         public static async Task MainAsync()
@@ -23,8 +21,8 @@ namespace NursingBot
                 
                 await Database.Initialize(DotNetEnv.Env.GetString("DB_CONN"));
 
-                Bot = new Bot();
-                await Bot.Initialize(DotNetEnv.Env.GetString("BOT_TOKEN"));
+                Global.Bot = new Bot();
+                await Global.Bot.Initialize(DotNetEnv.Env.GetString("BOT_TOKEN"));
                 
                 await Task.Delay(-1);
             }

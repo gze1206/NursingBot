@@ -18,7 +18,7 @@ namespace NursingBot.Features
             var builder = new EmbedBuilder()
                 .WithTitle("명령어 목록입니다.");
 
-            var modules = Program.Bot?.CommandService.Modules.ToList() ?? new();
+            var modules = Global.Bot?.CommandService.Modules.ToList() ?? new();
             foreach (var module in modules)
             {
                 var group = string.Empty;

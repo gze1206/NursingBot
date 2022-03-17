@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Commands;
+using Discord.Commands.Builders;
 using Discord.WebSocket;
 using NursingBot.Features.Preconditions;
 
@@ -59,6 +60,40 @@ namespace NursingBot.Features
                 .AddField("참가자 목록", string.Join(", ", users.Select(u => u.Username)))
                 .AddField("참가 여부", $"{STR_OK} : 참가\n{STR_NO} : 불참\n{STR_CLOSE} : 마감")
                 .Build();
+        }
+
+        private static async Task OnReactionAdded(Cacheable<IUserMessage, ulong> _, Cacheable<IMessageChannel, ulong> __, SocketReaction reaction)
+        {
+            var channel = reaction.Channel;
+
+            // 채널 정보가 유효해야 함
+            if (channel == null) return;
+
+            // 반응을 한 유저가 봇이 아니어야 함
+            if (!reaction.User.IsSpecified || reaction.User.Value.IsBot) return;
+            
+            await channel.SendMessageAsync(reaction.MessageId.ToString());
+        }
+
+        private static async Task OnReactionRemoved(Cacheable<IUserMessage, ulong> _, Cacheable<IMessageChannel, ulong> __, SocketReaction reaction)
+        {
+            var channel = reaction.Channel;
+
+            // 채널 정보가 유효해야 함
+            if (channel == null) return;
+
+            // 반응을 한 유저가 봇이 아니어야 함
+            if (!reaction.User.IsSpecified || reaction.User.Value.IsBot) return;
+            
+            await channel.SendMessageAsync(reaction.MessageId.ToString());
+        }
+
+        protected override void OnModuleBuilding(CommandService commandService, ModuleBuilder builder)
+        {
+            base.OnModuleBuilding(commandService, builder);
+
+            Global.Bot!.Client.ReactionAdded += OnReactionAdded;
+            Global.Bot!.Client.ReactionRemoved += OnReactionRemoved;
         }
     }
 }

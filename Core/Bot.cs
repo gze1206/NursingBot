@@ -15,13 +15,17 @@ namespace NursingBot.Core
         private static readonly string botStatus = "'!help'로 명령어 목록을 볼 수 있다고 안내";
 
         public CommandService CommandService { get; private set; }
+        public DiscordSocketClient Client { get; private set; }
 
-        private readonly DiscordSocketClient client;
         private readonly IServiceProvider serviceProvider;
 
         public Bot()
         {
-            this.client = new DiscordSocketClient();
+            this.Client = new DiscordSocketClient(new DiscordSocketConfig
+            {
+                GatewayIntents = GatewayIntents.AllUnprivileged,
+            });
+
             this.CommandService = new CommandService(new CommandServiceConfig
             {
                 LogLevel = LogSeverity.Info,
@@ -29,7 +33,7 @@ namespace NursingBot.Core
                 CaseSensitiveCommands = false,
             });
 
-            this.client.Log += OnReceiveLog;
+            this.Client.Log += OnReceiveLog;
             this.CommandService.Log += OnReceiveLog;
 
             this.serviceProvider = ConfigureServices();
@@ -42,12 +46,12 @@ namespace NursingBot.Core
                 throw new ArgumentNullException(nameof(token));
             }
             
-            client.Ready += this.OnClientReady;
+            Client.Ready += this.OnClientReady;
 
             try
             {
-                await this.client.LoginAsync(TokenType.Bot, token);
-                await this.client.StartAsync();
+                await this.Client.LoginAsync(TokenType.Bot, token);
+                await this.Client.StartAsync();
             }
             catch (Exception e)
             {
@@ -87,10 +91,10 @@ namespace NursingBot.Core
         {
             try
             {
-                await this.client.SetGameAsync(botStatus);
+                await this.Client.SetGameAsync(botStatus);
                 await this.CommandService.AddModulesAsync(Assembly.GetEntryAssembly(), this.serviceProvider);
 
-                this.client.MessageReceived += HandleCommandAsync;
+                this.Client.MessageReceived += HandleCommandAsync;
                 this.CommandService.CommandExecuted += OnCommandExecuted;
             }
             catch (AggregateException e)
@@ -132,7 +136,7 @@ namespace NursingBot.Core
             }
 
             // 봇의 메세지에는 반응하지 않습니다.
-            if (msg.Author.Id == this.client.CurrentUser.Id || msg.Author.IsBot)
+            if (msg.Author.Id == this.Client.CurrentUser.Id || msg.Author.IsBot)
             {
                 return;
             }
@@ -169,7 +173,7 @@ namespace NursingBot.Core
 
             if (msg.HasStringPrefix(commandPrefix, ref pos))
             {
-                var context = new SocketCommandContext(this.client, msg);
+                var context = new SocketCommandContext(this.Client, msg);
                 await this.CommandService.ExecuteAsync(context, pos, this.serviceProvider);
             }
         }
