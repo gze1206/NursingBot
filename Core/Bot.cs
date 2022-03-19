@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using NursingBot.Logger;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
+using NursingBot.Models;
 
 namespace NursingBot.Core
 {
@@ -149,18 +150,19 @@ namespace NursingBot.Core
 
             var commandPrefix = string.Empty;
 
+            // DB 직접 수정을 대비해 캐시된 서버 정보를 사용하지 않습니다.
+            if (msg.Channel is SocketGuildChannel channel)
             {
-                using var conn = await Database.Open();
-                using var cmd = conn.CreateCommand();
+                var guildId = channel.Guild.Id;
 
-                if (msg.Channel is SocketGuildChannel channel)
+                var server = await Database.Instance.Table<Server>()
+                    .Where(s => s.DiscordUID == guildId)
+                    .FirstOrDefaultAsync();
+                
+                if (server != null)
                 {
-                    cmd.CommandText = $"SELECT prefix FROM servers WHERE discordUID={channel.Guild.Id}";
-                    var reader = await cmd.ExecuteReaderAsync();
-                    if (await reader.ReadAsync())
-                    {
-                        commandPrefix = reader.GetString(0);
-                    }
+                    Database.Cache(guildId, server);
+                    commandPrefix = server.Prefix;
                 }
             }
 

@@ -3,6 +3,7 @@ using Discord;
 using Discord.Commands;
 using NursingBot.Core;
 using NursingBot.Logger;
+using NursingBot.Models;
 
 namespace NursingBot.Features
 {
@@ -68,28 +69,34 @@ namespace NursingBot.Features
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task RegisterAsync()
         {
-            var serverId = this.Context.Guild.Id;
+            var server = new Server
+            {
+                DiscordUID = this.Context.Guild.Id
+            };
 
-            using var conn = await Database.Open();
-            using var transaction = await conn.BeginTransactionAsync();
-            using var cmd = conn.CreateCommand();
+            var conn = Database.Instance.GetConnection();
 
             try
             {
-                cmd.CommandText = $"INSERT INTO servers (discordUID) VALUES ({serverId})";
-                await cmd.ExecuteNonQueryAsync();
+                conn.BeginTransaction();
 
-                await transaction.CommitAsync();
+                if (conn.Table<Server>().Where(s => s.DiscordUID == server.DiscordUID).Any())
+                {
+                    throw new Exception("이미 등록된 서버입니다.");
+                }
+
+                conn.Insert(server);
+                conn.Commit();
+
+                Database.Cache(server.DiscordUID, server);
+                await this.ReplyAsync("서버 등록에 성공했습니다!");
             }
             catch (Exception e)
             {
-                await transaction.RollbackAsync();
+                conn.Rollback();
                 await Log.Fatal(e);
-                await this.ReplyAsync("서버 등록에 실패했습니다...");
-                return;
+                await this.ReplyAsync($"서버 등록에 실패했습니다...\n{e.Message}");
             }
-
-            await this.ReplyAsync("서버 등록에 성공했습니다!");
         }
 
         [Command("test")]
@@ -97,16 +104,7 @@ namespace NursingBot.Features
         [RequireUserPermission(GuildPermission.Administrator)]
         public async Task TestAsync()
         {
-            using var conn = await Database.Open();
-            var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT sqlite_version();";
-            var version = await cmd.ExecuteScalarAsync();
-
-            var embed = new EmbedBuilder()
-                .AddField("Version", version)
-                .Build();
-
-            await this.ReplyAsync(embed: embed);
+            await Task.CompletedTask;
         }
     }
 }
