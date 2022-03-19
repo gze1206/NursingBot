@@ -19,6 +19,8 @@ namespace NursingBot.Core
 
             // 테이블 생성
             await Instance.CreateTableAsync<Server>();
+            await Instance.CreateTableAsync<PartyChannel>();
+            await Instance.CreateTableAsync<PartyRecruit>();
         }
 
         public static void Cache(ulong guildId, Server server)
