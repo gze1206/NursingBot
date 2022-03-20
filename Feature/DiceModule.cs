@@ -9,8 +9,11 @@ namespace NursingBot.Features
     {
         private static readonly int MinFace = 2;
         private static readonly int MaxFace = 100;
+        private static readonly int MinAmount = 1;
+        private static readonly int MaxAmount = 10;
         private static readonly string FormatErrorMessage = "주사위의 형식이 올바르지 않습니다.";
         private static readonly string FaceErrorMessage = $"주사위의 면이 올바르지 않습니다. 최소 {MinFace}부터 최대 {MaxFace}까지 지원합니다.";
+        private static readonly string AmountErrorMessage = $"주사위의 수량이 올바르지 않습니다. 최소 {MinAmount}부터 최대 {MaxAmount}까지 지원합니다.";
 
         [Command("dice")]
         [Alias("d", "roll")]
@@ -48,6 +51,11 @@ namespace NursingBot.Features
             if (values[1] < MinFace || values[1] > MaxFace)
             {
                 return this.Context.Message.ReplyAsync(FaceErrorMessage);
+            }
+
+            if (values[0] < MinAmount || values[0] > MaxAmount)
+            {
+                return this.Context.Message.ReplyAsync(AmountErrorMessage);
             }
 
             List<int> results = new();
