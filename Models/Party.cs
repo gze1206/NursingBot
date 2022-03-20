@@ -41,6 +41,10 @@ namespace NursingBot.Models
         [Column("messageId")]
         public ulong MessageId { get; set; }
 
+        [NotNull]
+        [Column("authorId")]
+        public ulong AuthorId { get; set; }
+
         [Column("description")]
         public string? Description { get; set; }
 

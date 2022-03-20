@@ -94,12 +94,13 @@ namespace NursingBot.Features
 
                     var targetChannel = channel.Guild.GetTextChannel(partyChannel.ChannelId);
 
-                    var msg = await targetChannel.SendMessageAsync(embed: Build(this.Context.User, description, date, new[] { this.Context.User }));
+                    var msg = await targetChannel.SendMessageAsync(embed: Build(this.Context.User, description, date, Array.Empty<IUser>()));
 
                     var recruit = new PartyRecruit
                     {
                         PartyChannelId = partyChannel.Id,
                         MessageId = msg.Id,
+                        AuthorId = this.Context.User.Id,
                         Description = description,
                         Date = date,
                     };
@@ -128,10 +129,15 @@ namespace NursingBot.Features
 
         private static Embed Build(IUser sender, string? description, string? date, IUser[] users, bool isClosed = false)
         {
-            var member = string.Join(", ", users.Select(u => u.Username));
-            if (string.IsNullOrWhiteSpace(member))
+            var member = users.ToList();
+            member.Insert(0, sender);
+
+            var memberText = string.Join(", ", member
+                .DistinctBy(u => u.Id)
+                .Select(u => u.Username));
+            if (string.IsNullOrWhiteSpace(memberText))
             {
-                member = "(없음)";
+                memberText = "(없음)";
             }
 
             return new EmbedBuilder()
@@ -139,7 +145,7 @@ namespace NursingBot.Features
                 .WithDescription($"{sender.Mention} 님이 등록한 모집 공고입니다.")
                 .AddField("설명", description)
                 .AddField("예정 일시", date)
-                .AddField("참가자 목록", member)
+                .AddField("참가자 목록", memberText)
                 .AddField("참가 여부", $"{STR_OK} : 참가\n{STR_NO} : 불참\n{STR_CLOSE} : 마감")
                 .Build();
         }
@@ -203,6 +209,7 @@ namespace NursingBot.Features
                     return;
                 }
 
+                var author = channel.GetUser(recruit.AuthorId);
                 var msg = await channel.GetMessageAsync(recruit.MessageId);
 
                 if (emojiName.Equals(STR_OK))
@@ -212,7 +219,7 @@ namespace NursingBot.Features
                         .Where(u => !u.IsBot)
                         .ToArrayAsync();
 
-                    var embed = Build(msg.Author, recruit.Description, recruit.Date, member);
+                    var embed = Build(author, recruit.Description, recruit.Date, member);
 
                     msg = await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
 
@@ -226,7 +233,7 @@ namespace NursingBot.Features
                         .Where(u => !u.IsBot)
                         .ToArrayAsync();
 
-                    var embed = Build(msg.Author, recruit.Description, recruit.Date, member, true);
+                    var embed = Build(author, recruit.Description, recruit.Date, member, true);
                     await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
 
                     recruit.IsClosed = true;
@@ -283,6 +290,7 @@ namespace NursingBot.Features
                     return;
                 }
 
+                var author = channel.GetUser(recruit.AuthorId);
                 var msg = await channel.GetMessageAsync(recruit.MessageId);
 
                 var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
@@ -290,7 +298,7 @@ namespace NursingBot.Features
                     .Where(u => !u.IsBot)
                     .ToArrayAsync();
 
-                var embed = Build(msg.Author, recruit.Description, recruit.Date, member);
+                var embed = Build(author, recruit.Description, recruit.Date, member);
 
                 msg = await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
 
