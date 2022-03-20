@@ -164,6 +164,7 @@ namespace NursingBot.Core
                     Database.Cache(guildId, server);
                     commandPrefix = server.Prefix;
                 }
+                else Database.ClearCache(guildId);
             }
 
             if (string.IsNullOrWhiteSpace(commandPrefix))

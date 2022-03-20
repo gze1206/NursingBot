@@ -27,5 +27,10 @@ namespace NursingBot.Core
         {
             CachedServers[guildId] = server;
         }
+
+        public static void ClearCache(ulong guildId)
+        {
+            CachedServers.Remove(guildId);
+        }
     }
 }

@@ -13,7 +13,7 @@ namespace NursingBot.Features.Preconditions
         {
             if (context.User is SocketGuildUser user)
             {
-                if (Database.CachedServers.ContainsKey(user.Guild.Id))
+                if (!Database.CachedServers.ContainsKey(user.Guild.Id))
                 {
                     return PreconditionResult.FromError("등록되지 않은 서버입니다!\nregister 명령을 통해 서버를 등록해주세요.");
                 }
