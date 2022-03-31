@@ -1,26 +1,36 @@
-using System.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using NursingBot.Logger;
 using NursingBot.Models;
-using SQLite;
 
 namespace NursingBot.Core
 {
     public static class Database
     {
         #pragma warning disable
-        public static SQLiteAsyncConnection Instance { get; private set; }
+        public static PooledDbContextFactory<ApplicationDbContext> Instance { get; private set; }
         #pragma warning enable
 
         public static Dictionary<ulong, Server> CachedServers { get; private set; } = new();
 
-        public static async Task Initialize(string path)
+        public static async Task Initialize(string connectionString)
         {
-            Instance = new SQLiteAsyncConnection(path);
+            try
+            {
+                var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                    .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
+                    .LogTo(log => Log.Fatal(log), Microsoft.Extensions.Logging.LogLevel.Error)
+                    .Options;
 
-            // 테이블 생성
-            await Instance.CreateTableAsync<Server>();
-            await Instance.CreateTableAsync<PartyChannel>();
-            await Instance.CreateTableAsync<PartyRecruit>();
+                Instance = new PooledDbContextFactory<ApplicationDbContext>(options);
+
+                using var context = await Instance.CreateDbContextAsync();
+                await context.Database.EnsureCreatedAsync();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
 
         public static void Cache(ulong guildId, Server server)
@@ -31,6 +41,35 @@ namespace NursingBot.Core
         public static void ClearCache(ulong guildId)
         {
             CachedServers.Remove(guildId);
+        }
+    }
+
+    public class ApplicationDbContext : DbContext
+    {
+        public DbSet<Server> Servers { get; private set; }
+        public DbSet<PartyChannel> PartyChannels { get; private set; }
+        public DbSet<PartyRecruit> PartyRecruits { get; private set; }
+
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+        {
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Server>()
+                .Property(s => s.Id)
+                .ValueGeneratedOnAdd();
+
+            modelBuilder.Entity<Server>()
+                .HasIndex(s => s.DiscordUID);
+
+            modelBuilder.Entity<PartyChannel>()
+                .HasOne<Server>(ch => ch.Server);
+
+            modelBuilder.Entity<PartyRecruit>()
+                .HasOne<PartyChannel>(pr => pr.PartyChannel);
+
+            base.OnModelCreating(modelBuilder);
         }
     }
 }

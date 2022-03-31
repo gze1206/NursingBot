@@ -1,69 +1,51 @@
-using SQLite;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace NursingBot.Models
 {
     [Table("partyChannels")]
     public class PartyChannel
     {
-        [PrimaryKey, AutoIncrement, NotNull]
-        [Column("id")]
+        [Key]
         public ulong Id { get; set; }
 
-        [Unique, NotNull]
-        [Column("serverId")]
         public ulong ServerId { get; set; }
 
-        [NotNull]
-        [Column("channelId")]
+        [ForeignKey("ServerId")]
+        public Server Server { get; set; }
+
         public ulong ChannelId { get; set; }
 
-        [NotNull]
-        [Column("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        [NotNull]
-        [Column("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
     }
 
     [Table("partyRecruits")]
     public class PartyRecruit
     {
-        [PrimaryKey, AutoIncrement, NotNull]
-        [Column("id")]
+        [Key]
         public ulong Id { get; set; }
 
-        [NotNull]
-        [Column("partyChannelId")]
         public ulong PartyChannelId { get; set; }
 
-        [NotNull, Unique]
-        [Column("messageId")]
+        [ForeignKey("PartyChannelId")]
+        public PartyChannel PartyChannel { get; set; }
+
         public ulong MessageId { get; set; }
 
-        [NotNull]
-        [Column("authorId")]
         public ulong AuthorId { get; set; }
 
-        [Column("description")]
         public string? Description { get; set; }
 
-        [Column("date")]
         public string? Date { get; set; }
 
-        [NotNull]
-        [Column("isClosed")]
         public bool IsClosed { get; set; }
 
-        [NotNull]
-        [Column("createdAt")]
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        [NotNull]
-        [Column("updatedAt")]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        [Column("closedAt")]
         public DateTime? ClosedAt { get; set; }
     }
 }

@@ -6,6 +6,11 @@ using NursingBot.Logger;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using NursingBot.Models;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using NLog;
+using NLog.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace NursingBot.Core
 {
@@ -85,6 +90,18 @@ namespace NursingBot.Core
         {
             var map = new ServiceCollection();
 
+            var config = new ConfigurationBuilder()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+                .Build();
+
+            map.AddLogging(loggingBuilder =>
+            {
+                loggingBuilder.ClearProviders();
+                loggingBuilder.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
+                loggingBuilder.AddNLog(config);
+            });
+
             return map.BuildServiceProvider();
         }
 
@@ -153,18 +170,27 @@ namespace NursingBot.Core
             // DB 직접 수정을 대비해 캐시된 서버 정보를 사용하지 않습니다.
             if (msg.Channel is SocketGuildChannel channel)
             {
-                var guildId = channel.Guild.Id;
-
-                var server = await Database.Instance.Table<Server>()
-                    .Where(s => s.DiscordUID == guildId)
-                    .FirstOrDefaultAsync();
-                
-                if (server != null)
+                try
                 {
-                    Database.Cache(guildId, server);
-                    commandPrefix = server.Prefix;
+                    var guildId = channel.Guild.Id;
+
+                    using var context = await Database.Instance.CreateDbContextAsync();
+
+                    var server = await context.Servers
+                        .Where(s => s.DiscordUID == guildId)
+                        .FirstOrDefaultAsync();
+                
+                    if (server != null)
+                    {
+                        Database.Cache(guildId, server);
+                        commandPrefix = server.Prefix;
+                    }
+                    else Database.ClearCache(guildId);
                 }
-                else Database.ClearCache(guildId);
+                catch (Exception ex)
+                {
+                    await Log.Fatal(ex);
+                }
             }
 
             if (string.IsNullOrWhiteSpace(commandPrefix))

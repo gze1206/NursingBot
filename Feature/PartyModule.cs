@@ -2,11 +2,12 @@ using Discord;
 using Discord.Commands;
 using Discord.Commands.Builders;
 using Discord.WebSocket;
+using Microsoft.EntityFrameworkCore;
 using NursingBot.Core;
+using NursingBot.Feature.Preconditions;
 using NursingBot.Features.Preconditions;
 using NursingBot.Logger;
 using NursingBot.Models;
-using SQLite;
 
 namespace NursingBot.Features
 {
@@ -28,7 +29,7 @@ namespace NursingBot.Features
 
         [Command("register")]
         [Summary("파티 모집 공고를 등록할 채널 설정 / 변경")]
-        [RequireUserPermission(GuildPermission.Administrator)]
+        [RequireAdminPermission]
         public async Task RegisterAsync([Summary("파티 모집 공고가 올라갈 채널입니다. #채널이름 형식으로 입력하시면 됩니다.")] ITextChannel channel)
         {
             if (!Database.CachedServers.TryGetValue(channel.GuildId, out var server))
@@ -43,7 +44,9 @@ namespace NursingBot.Features
                 ChannelId = channel.Id,
             };
 
-            await Database.Instance.InsertOrReplaceAsync(partyChannel);
+            using var context = await Database.Instance.CreateDbContextAsync();
+            await context.PartyChannels.AddAsync(partyChannel);
+            await context.SaveChangesAsync();
             await this.ReplyAsync("파티 모집 채널 설정에 성공했습니다!");
         }
 
@@ -77,15 +80,13 @@ namespace NursingBot.Features
                     date = "(미정)";
                 }
 
-                var conn = Database.Instance.GetConnection();
+                using var context = await Database.Instance.CreateDbContextAsync();
+                using var transaction = await context.Database.BeginTransactionAsync();
 
                 try
                 {
-                    conn.BeginTransaction();
-
-                    var partyChannel = conn.Table<PartyChannel>()
-                        .Where(p => p.ServerId == server.Id)
-                        .FirstOrDefault();
+                    var partyChannel = await context.PartyChannels
+                        .FirstOrDefaultAsync(p => p.ServerId == server.Id);
                     
                     if (partyChannel == null)
                     {
@@ -112,12 +113,14 @@ namespace NursingBot.Features
 
                     await targetChannel.CreateThreadAsync("파티 스레드", message: msg);
 
-                    conn.Insert(recruit);
-                    conn.Commit();
+                    await context.PartyRecruits.AddAsync(recruit);
+                    await context.SaveChangesAsync();
+
+                    await transaction.CommitAsync();
                 }
                 catch (Exception e)
                 {
-                    conn.Rollback();
+                    await transaction.RollbackAsync();
                     await Log.Fatal(e);
                     await this.ReplyAsync($"모집 공고 등록에 실패했습니다...\n{e.Message}");
                     return;
@@ -150,20 +153,19 @@ namespace NursingBot.Features
                 .Build();
         }
 
-        private static PartyRecruit? GetPartyRecruit(SQLiteConnectionWithLock conn, Server server, ulong channelId, ulong messageId)
+        private static PartyRecruit? GetPartyRecruit(ApplicationDbContext context, Server server, ulong channelId, ulong messageId)
         {
-            var partyChannel = conn.Table<PartyChannel>()
-                .Where(p => p.ServerId == server.Id && p.ChannelId == channelId)
-                .FirstOrDefault();
+            
+            var partyChannel = context.PartyChannels
+                .FirstOrDefault(p => p.ServerId == server.Id && p.ChannelId == channelId);
 
             if (partyChannel == null)
             {
                 return null;
             }
 
-            var recruit = conn.Table<PartyRecruit>()
-                .Where(p => p.PartyChannelId == partyChannel.Id && p.MessageId == messageId)
-                .FirstOrDefault();
+            var recruit = context.PartyRecruits
+                .FirstOrDefault(p => p.PartyChannelId == partyChannel.Id && p.MessageId == messageId);
 
             return recruit;
         }
@@ -186,26 +188,24 @@ namespace NursingBot.Features
                 return;
             }
 
-            var conn = Database.Instance.GetConnection();
+            using var context = await Database.Instance.CreateDbContextAsync();
+            using var transaction = await context.Database.BeginTransactionAsync();
 
             try
             {
-                conn.BeginTransaction();
-
-                var server = await Database.Instance.Table<Server>()
-                    .Where(s => s.DiscordUID == channel.Guild.Id)
-                    .FirstOrDefaultAsync();
+                var server = await context.Servers
+                    .FirstOrDefaultAsync(s => s.DiscordUID == channel.Guild.Id);
                 
                 if (server == null)
                 {
-                    conn.Rollback();
+                    await transaction.RollbackAsync();
                     return;
                 }
 
-                var recruit = GetPartyRecruit(conn, server, channel.Id, reaction.MessageId);
+                var recruit = GetPartyRecruit(context, server, channel.Id, reaction.MessageId);
                 if (recruit == null || recruit.IsClosed)
                 {
-                    conn.Rollback();
+                    await transaction.RollbackAsync();
                     return;
                 }
 
@@ -221,10 +221,11 @@ namespace NursingBot.Features
 
                     var embed = Build(author, recruit.Description, recruit.Date, member);
 
-                    msg = await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
+                    await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
 
-                    recruit.MessageId = msg.Id;
-                    conn.Update(recruit);
+                    recruit.UpdatedAt = DateTime.UtcNow;
+                    context.PartyRecruits.Update(recruit);
+                    await context.SaveChangesAsync();
                 }
                 else if (emojiName.Equals(STR_CLOSE))
                 {
@@ -234,18 +235,21 @@ namespace NursingBot.Features
                         .ToArrayAsync();
 
                     var embed = Build(author, recruit.Description, recruit.Date, member, true);
+                    
                     await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
 
                     recruit.IsClosed = true;
+                    recruit.UpdatedAt = DateTime.UtcNow;
                     recruit.ClosedAt = DateTime.UtcNow;
-                    conn.Update(recruit);
+                    context.PartyRecruits.Update(recruit);
+                    await context.SaveChangesAsync();
                 }
 
-                conn.Commit();
+                await transaction.CommitAsync();
             }
             catch (Exception e)
             {
-                conn.Rollback();
+                await transaction.RollbackAsync();
                 await Log.Fatal(e);
             }
         }
@@ -261,54 +265,81 @@ namespace NursingBot.Features
                 return;
             }
 
-            // 반응 제거의 경우 참가만 신경쓰면 됨
-            if (reaction.Emote.Name != STR_OK)
+            // 참가나 마감이 아니면 반응할 필요 없음
+            var emojiName = reaction.Emote.Name;
+            if (!DetectingReactions.Contains(emojiName))
             {
                 return;
             }
 
-            var conn = Database.Instance.GetConnection();
+            using var context = await Database.Instance.CreateDbContextAsync();
+            using var transaction = await context.Database.BeginTransactionAsync();
 
             try
             {
-                conn.BeginTransaction();
-
-                var server = await Database.Instance.Table<Server>()
-                    .Where(s => s.DiscordUID == channel.Guild.Id)
-                    .FirstOrDefaultAsync();
+                var server = await context.Servers
+                    .FirstOrDefaultAsync(s => s.DiscordUID == channel.Guild.Id);
                 
                 if (server == null)
                 {
-                    conn.Rollback();
+                    await transaction.RollbackAsync();
                     return;
                 }
 
-                var recruit = GetPartyRecruit(conn, server, channel.Id, reaction.MessageId);
-                if (recruit == null || recruit.IsClosed)
+                var recruit = GetPartyRecruit(context, server, channel.Id, reaction.MessageId);
+                if (recruit == null)
                 {
-                    conn.Rollback();
+                    await transaction.RollbackAsync();
                     return;
                 }
 
                 var author = channel.GetUser(recruit.AuthorId);
                 var msg = await channel.GetMessageAsync(recruit.MessageId);
 
-                var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
-                    .Flatten()
-                    .Where(u => !u.IsBot)
-                    .ToArrayAsync();
+                if (emojiName.Equals(STR_OK))
+                {
+                    if (recruit.IsClosed)
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
 
-                var embed = Build(author, recruit.Description, recruit.Date, member);
+                    var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
+                        .Flatten()
+                        .Where(u => !u.IsBot)
+                        .ToArrayAsync();
 
-                msg = await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
+                    var embed = Build(author, recruit.Description, recruit.Date, member);
 
-                recruit.MessageId = msg.Id;
-                conn.Update(recruit);
-                conn.Commit();
+                    await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
+
+                    recruit.UpdatedAt = DateTime.UtcNow;
+                    context.PartyRecruits.Update(recruit);
+                    await context.SaveChangesAsync();
+                }
+                else if (emojiName.Equals(STR_CLOSE))
+                {
+                    var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
+                        .Flatten()
+                        .Where(u => !u.IsBot)
+                        .ToArrayAsync();
+
+                    var embed = Build(author, recruit.Description, recruit.Date, member, false);
+
+                    await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
+
+                    recruit.IsClosed = false;
+                    recruit.UpdatedAt = DateTime.UtcNow;
+                    recruit.ClosedAt = null;
+                    context.PartyRecruits.Update(recruit);
+                    await context.SaveChangesAsync();
+                }
+
+                await transaction.CommitAsync();
             }
             catch (Exception e)
             {
-                conn.Rollback();
+                await transaction.RollbackAsync();
                 await Log.Fatal(e);
             }
         }

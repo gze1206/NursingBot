@@ -1,4 +1,5 @@
-﻿using NursingBot.Core;
+﻿using MySqlConnector;
+using NursingBot.Core;
 using NursingBot.Logger;
 
 namespace NursingBot
@@ -12,14 +13,30 @@ namespace NursingBot
             try
             {
                 await Log.Add(new ConsoleLogger());
+                await Log.Add(new NLogLogger());
 
-                #if DEBUG
-                    DotNetEnv.Env.TraversePath().Load();
-                #else
+#if DEBUG
+                DotNetEnv.Env.TraversePath().Load();
+#else
                     DotNetEnv.Env.Load();
-                #endif
-                
-                await Database.Initialize(DotNetEnv.Env.GetString("DB_CONN"));
+#endif
+
+                var conn = new MySqlConnectionStringBuilder()
+                {
+                    Server = DotNetEnv.Env.GetString("DB_SERVER"),
+                    Database = DotNetEnv.Env.GetString("DB_NAME"),
+                    UserID = DotNetEnv.Env.GetString("DB_USER"),
+                    Password = DotNetEnv.Env.GetString("DB_PW"),
+                };
+
+                await Database.Initialize(conn.ConnectionString);
+
+                var superUser = DotNetEnv.Env.GetString("SUPER_USER");
+                if (!string.IsNullOrWhiteSpace(superUser)
+                    && ulong.TryParse(superUser, out var superUserId))
+                {
+                    Global.SuperUserId = superUserId;
+                }
 
                 Global.Bot = new Bot();
                 await Global.Bot.Initialize(DotNetEnv.Env.GetString("BOT_TOKEN"));
@@ -29,6 +46,11 @@ namespace NursingBot
             catch (Exception ex)
             {
                 Console.WriteLine($"FATAL ERROR ON PROGRAM : {ex.Message}\n\t{ex.StackTrace}");
+                Console.ReadKey(true);
+            }
+            finally
+            {
+                NLog.LogManager.Shutdown();
             }
         }
     }

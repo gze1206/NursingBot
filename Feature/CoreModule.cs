@@ -1,7 +1,9 @@
 using System.Text;
 using Discord;
 using Discord.Commands;
+using Microsoft.EntityFrameworkCore;
 using NursingBot.Core;
+using NursingBot.Feature.Preconditions;
 using NursingBot.Logger;
 using NursingBot.Models;
 
@@ -18,6 +20,12 @@ namespace NursingBot.Features
         {
             var builder = new EmbedBuilder()
                 .WithTitle("명령어 목록입니다.");
+
+            var helpUrl = DotNetEnv.Env.GetString("HELP_URL");
+            if (!string.IsNullOrWhiteSpace(helpUrl))
+            {
+                builder.WithDescription($"[이 링크]({helpUrl})에서도 확인 가능합니다!");
+            }
 
             var modules = Global.Bot?.CommandService.Modules.ToList() ?? new();
             foreach (var module in modules)
@@ -66,7 +74,7 @@ namespace NursingBot.Features
 
         [Command("register")]
         [Summary("이 서버에서 봇 명령어 사용이 가능하도록 등록합니다.")]
-        [RequireUserPermission(GuildPermission.Administrator)]
+        [RequireAdminPermission]
         public async Task RegisterAsync()
         {
             var server = new Server
@@ -74,26 +82,29 @@ namespace NursingBot.Features
                 DiscordUID = this.Context.Guild.Id
             };
 
-            var conn = Database.Instance.GetConnection();
+
+            using var context = await Database.Instance.CreateDbContextAsync();
+            using var transaction = await context.Database.BeginTransactionAsync();
 
             try
             {
-                conn.BeginTransaction();
 
-                if (conn.Table<Server>().Where(s => s.DiscordUID == server.DiscordUID).Any())
+                if (await context.Servers.AnyAsync(s => s.DiscordUID == server.DiscordUID))
                 {
                     throw new Exception("이미 등록된 서버입니다.");
                 }
 
-                conn.Insert(server);
-                conn.Commit();
+                await context.Servers.AddAsync(server);
+                await context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
 
                 Database.Cache(server.DiscordUID, server);
                 await this.ReplyAsync("서버 등록에 성공했습니다!");
             }
             catch (Exception e)
             {
-                conn.Rollback();
+                await transaction.RollbackAsync();
                 await Log.Fatal(e);
                 await this.ReplyAsync($"서버 등록에 실패했습니다...\n{e.Message}");
             }
@@ -101,7 +112,7 @@ namespace NursingBot.Features
 
         [Command("test")]
         [Summary("DBG")]
-        [RequireUserPermission(GuildPermission.Administrator)]
+        [RequireAdminPermission]
         public async Task TestAsync()
         {
             await Task.CompletedTask;
