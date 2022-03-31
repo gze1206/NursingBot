@@ -319,18 +319,24 @@ namespace NursingBot.Features
                 }
                 else if (emojiName.Equals(STR_CLOSE))
                 {
+                    var isClose = await msg.GetReactionUsersAsync(EMOJI_CLOSE, int.MaxValue)
+                        .Flatten()
+                        .CountAsync() > 1;
+
                     var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
                         .Flatten()
                         .Where(u => !u.IsBot)
                         .ToArrayAsync();
 
-                    var embed = Build(author, recruit.Description, recruit.Date, member, false);
+                    var embed = Build(author, recruit.Description, recruit.Date, member, isClose);
 
                     await channel.ModifyMessageAsync(msg.Id, p => p.Embed = embed);
 
-                    recruit.IsClosed = false;
                     recruit.UpdatedAt = DateTime.UtcNow;
-                    recruit.ClosedAt = null;
+                    if (!isClose)
+                    {
+                        recruit.IsClosed = isClose;
+                    }
                     context.PartyRecruits.Update(recruit);
                     await context.SaveChangesAsync();
                 }
