@@ -16,12 +16,7 @@ namespace NursingBot.Logger
             set => UpdateLogLevel(value);
         }
 
-        private static LogLevel logLevel
-        #if DEBUG
-            = LogLevel.ALL;
-        #else
-            = LogLevel.ERROR;
-        #endif
+        private static LogLevel logLevel = LogLevel.ALL;
 
         private static readonly ConcurrentBag<ILogger> loggers = new();
 

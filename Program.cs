@@ -18,7 +18,7 @@ namespace NursingBot
 #if DEBUG
                 DotNetEnv.Env.TraversePath().Load();
 #else
-                    DotNetEnv.Env.Load();
+                DotNetEnv.Env.Load();
 #endif
 
                 var conn = new MySqlConnectionStringBuilder()
