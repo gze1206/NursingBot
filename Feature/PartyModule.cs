@@ -132,12 +132,15 @@ namespace NursingBot.Features
 
         private static Embed Build(IUser sender, string? description, string? date, IUser[] users, bool isClosed = false)
         {
-            var member = users.ToList();
-            member.Insert(0, sender);
+            var memberText = string.Empty;
 
-            var memberText = string.Join(", ", member
-                .DistinctBy(u => u.Id)
-                .Select(u => u.Username));
+            if (users.Length > 0)
+            {
+                memberText = string.Join(", ", users
+                    .DistinctBy(u => u.Id)
+                    .Select(u => u.Username));
+            }
+
             if (string.IsNullOrWhiteSpace(memberText))
             {
                 memberText = "(없음)";
@@ -145,7 +148,7 @@ namespace NursingBot.Features
 
             return new EmbedBuilder()
                 .WithTitle(isClosed ? "*[마감됨]* 파티 모집" : "파티 모집")
-                .WithDescription($"{sender.Mention} 님이 등록한 모집 공고입니다.")
+                .WithDescription($"{sender?.Mention ?? "<UNKNOWN>"} 님이 등록한 모집 공고입니다.")
                 .AddField("설명", description)
                 .AddField("예정 일시", date)
                 .AddField("참가자 목록", memberText)
