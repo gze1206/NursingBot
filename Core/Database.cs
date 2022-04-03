@@ -25,7 +25,7 @@ namespace NursingBot.Core
                 Instance = new PooledDbContextFactory<ApplicationDbContext>(options);
 
                 using var context = await Instance.CreateDbContextAsync();
-                await context.Database.EnsureCreatedAsync();
+                await context.Database.MigrateAsync();
             }
             catch (Exception ex)
             {
@@ -44,15 +44,15 @@ namespace NursingBot.Core
         }
     }
 
-    public class ApplicationDbContext : DbContext
+    public partial class ApplicationDbContext : DbContext
     {
         public DbSet<Server> Servers { get; private set; }
         public DbSet<PartyChannel> PartyChannels { get; private set; }
         public DbSet<PartyRecruit> PartyRecruits { get; private set; }
+        public DbSet<Vote> Votes { get; private set; }
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
-        {
-        }
+        { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -68,6 +68,9 @@ namespace NursingBot.Core
 
             modelBuilder.Entity<PartyRecruit>()
                 .HasOne<PartyChannel>(pr => pr.PartyChannel);
+
+            modelBuilder.Entity<Vote>()
+                .HasOne<Server>(v => v.Server);
 
             base.OnModelCreating(modelBuilder);
         }

@@ -34,7 +34,7 @@ namespace NursingBot.Features
         {
             if (!Database.CachedServers.TryGetValue(channel.GuildId, out var server))
             {
-                await this.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
                 return;
             }
 
@@ -47,7 +47,7 @@ namespace NursingBot.Features
             using var context = await Database.Instance.CreateDbContextAsync();
             await context.PartyChannels.AddAsync(partyChannel);
             await context.SaveChangesAsync();
-            await this.ReplyAsync("파티 모집 채널 설정에 성공했습니다!");
+            await this.Context.Message.ReplyAsync("파티 모집 채널 설정에 성공했습니다!");
         }
 
         [Command("add")]
@@ -65,7 +65,7 @@ namespace NursingBot.Features
 
                 if (!Database.CachedServers.TryGetValue(channel.Guild.Id, out var server))
                 {
-                    await this.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                    await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
                     return;
                 }
 
@@ -122,11 +122,11 @@ namespace NursingBot.Features
                 {
                     await transaction.RollbackAsync();
                     await Log.Fatal(e);
-                    await this.ReplyAsync($"모집 공고 등록에 실패했습니다...\n{e.Message}");
+                    await this.Context.Message.ReplyAsync($"모집 공고 등록에 실패했습니다...\n{e.Message}");
                     return;
                 }
 
-                await this.ReplyAsync("파티 모집 공고를 등록했습니다!");
+                await this.Context.Message.ReplyAsync("파티 모집 공고를 등록했습니다!");
             }
         }
 

@@ -37,7 +37,7 @@ namespace NursingBot.Core
             this.CommandService = new CommandService(new CommandServiceConfig
             {
                 LogLevel = LogSeverity.Info,
-
+                DefaultRunMode = RunMode.Async,
                 CaseSensitiveCommands = false,
             });
 
@@ -115,7 +115,9 @@ namespace NursingBot.Core
                 await this.CommandService.AddModulesAsync(Assembly.GetEntryAssembly(), this.serviceProvider);
 
                 this.Client.MessageReceived += HandleCommandAsync;
+#if DEBUG
                 this.CommandService.CommandExecuted += OnCommandExecuted;
+#endif
             }
             catch (AggregateException e)
             {

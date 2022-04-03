@@ -12,7 +12,7 @@ namespace NursingBot.Models
         public ulong ServerId { get; set; }
 
         [ForeignKey("ServerId")]
-        public Server Server { get; set; }
+        public Server? Server { get; set; }
 
         public ulong ChannelId { get; set; }
 
@@ -30,7 +30,7 @@ namespace NursingBot.Models
         public ulong PartyChannelId { get; set; }
 
         [ForeignKey("PartyChannelId")]
-        public PartyChannel PartyChannel { get; set; }
+        public PartyChannel? PartyChannel { get; set; }
 
         public ulong MessageId { get; set; }
 

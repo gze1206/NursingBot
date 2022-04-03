@@ -4,10 +4,10 @@ namespace NursingBot.Logger
     {
         private static ConsoleColor ForegroundColor(LogLevel level) => level switch
         {
-            LogLevel.INFO => ConsoleColor.DarkGray,
+            LogLevel.INFO => ConsoleColor.White,
             LogLevel.WARN => ConsoleColor.Yellow,
             LogLevel.ERROR or LogLevel.FATAL => ConsoleColor.Red,
-            _ => ConsoleColor.White
+            _ => ConsoleColor.DarkGray
         };
 
         public LogLevel LogLevel { get; set; }

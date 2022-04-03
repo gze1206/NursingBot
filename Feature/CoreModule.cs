@@ -103,13 +103,13 @@ namespace NursingBot.Features
                 await transaction.CommitAsync();
 
                 Database.Cache(server.DiscordUID, server);
-                await this.ReplyAsync("서버 등록에 성공했습니다!");
+                await this.Context.Message.ReplyAsync("서버 등록에 성공했습니다!");
             }
             catch (Exception e)
             {
                 await transaction.RollbackAsync();
                 await Log.Fatal(e);
-                await this.ReplyAsync($"서버 등록에 실패했습니다...\n{e.Message}");
+                await this.Context.Message.ReplyAsync($"서버 등록에 실패했습니다...\n{e.Message}");
             }
         }
 
