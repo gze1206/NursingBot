@@ -29,7 +29,9 @@ namespace NursingBot.Core
         {
             this.Client = new DiscordSocketClient(new DiscordSocketConfig
             {
-                GatewayIntents = GatewayIntents.AllUnprivileged,
+                GatewayIntents = GatewayIntents.GuildMessages
+                    | GatewayIntents.GuildMessageReactions
+                    | GatewayIntents.Guilds,
             });
 
             this.CommandService = new CommandService(new CommandServiceConfig
@@ -202,8 +204,15 @@ namespace NursingBot.Core
 
             if (msg.HasStringPrefix(commandPrefix, ref pos))
             {
-                var context = new SocketCommandContext(this.Client, msg);
-                await this.CommandService.ExecuteAsync(context, pos, this.serviceProvider);
+                try
+                {
+                    var context = new SocketCommandContext(this.Client, msg);
+                    _ = Task.Run(() => this.CommandService.ExecuteAsync(context, pos, this.serviceProvider));
+                }
+                catch (Exception ex)
+                {
+                    await Log.Fatal(ex);
+                }
             }
         }
     }

@@ -24,50 +24,53 @@ namespace NursingBot.Features
             var helpUrl = DotNetEnv.Env.GetString("HELP_URL");
             if (!string.IsNullOrWhiteSpace(helpUrl))
             {
-                builder.WithDescription($"[이 링크]({helpUrl})에서도 확인 가능합니다!");
+                builder.WithDescription($"[이 링크]({helpUrl})에서 확인 가능합니다!");
             }
-
-            var modules = Global.Bot?.CommandService.Modules.ToList() ?? new();
-            foreach (var module in modules)
+            else
             {
-                var group = string.Empty;
-                if (module.Group != null)
+                var modules = Global.Bot?.CommandService.Modules.ToList() ?? new();
+                foreach (var module in modules)
                 {
-                    group = $"{module.Group} ";
-                }
-                var commands = module.Commands.ToList() ?? new();
-                foreach (var cmd in commands)
-                {
-                    var precondition = await cmd.CheckPreconditionsAsync(this.Context);
-                    if (!precondition.IsSuccess)
+                    var group = string.Empty;
+                    if (module.Group != null)
                     {
-                        continue;
+                        group = $"{module.Group} ";
                     }
-
-                    if (cmd.Summary?.StartsWith(DEBUG_SUMMARY) ?? false)
+                    var commands = module.Commands.ToList() ?? new();
+                    foreach (var cmd in commands)
                     {
-                        continue;
-                    }
-                    
-                    var stringBuilder = new StringBuilder(cmd.Summary ?? "*설명 없음*");
-
-                    if (cmd.Aliases.Count > 1)
-                    {
-                        stringBuilder.Append($"\n\n**별칭** : {string.Join(',', cmd.Aliases.Skip(1))}");
-                    }
-
-                    if (cmd.Parameters.Count > 0)
-                    {
-                        stringBuilder.Append("\n\n* **매개 변수**");
-                        foreach (var param in cmd.Parameters)
+                        var precondition = await cmd.CheckPreconditionsAsync(this.Context);
+                        if (!precondition.IsSuccess)
                         {
-                            stringBuilder.Append($"\n　　* {param.Name} : {(param.IsOptional?"*(선택)* ":"")}{param.Summary}");
+                            continue;
                         }
-                    }
 
-                    builder.AddField($"{Bot.DefaultCommandPrefix}{group}{cmd.Name}", stringBuilder);
+                        if (cmd.Summary?.StartsWith(DEBUG_SUMMARY) ?? false)
+                        {
+                            continue;
+                        }
+                    
+                        var stringBuilder = new StringBuilder(cmd.Summary ?? "*설명 없음*");
+
+                        if (cmd.Aliases.Count > 1)
+                        {
+                            stringBuilder.Append($"\n\n**별칭** : {string.Join(',', cmd.Aliases.Skip(1))}");
+                        }
+
+                        if (cmd.Parameters.Count > 0)
+                        {
+                            stringBuilder.Append("\n\n* **매개 변수**");
+                            foreach (var param in cmd.Parameters)
+                            {
+                                stringBuilder.Append($"\n　　* {param.Name} : {(param.IsOptional?"*(선택)* ":"")}{param.Summary}");
+                            }
+                        }
+
+                        builder.AddField($"{Bot.DefaultCommandPrefix}{group}{cmd.Name}", stringBuilder);
+                    }
                 }
             }
+
 
             await this.Context.User.SendMessageAsync(embed: builder.Build());
         }
