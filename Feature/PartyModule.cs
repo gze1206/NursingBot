@@ -173,7 +173,7 @@ namespace NursingBot.Features
             return recruit;
         }
 
-        private static async Task OnReactionAdded(Cacheable<IUserMessage, ulong> _, Cacheable<IMessageChannel, ulong> __, SocketReaction reaction)
+        private static async Task OnReactionAdded(SocketReaction reaction)
         {
             // 반응을 한 유저가 봇이 아니어야 함
             if (!reaction.User.IsSpecified || reaction.User.Value.IsBot) return;
@@ -257,7 +257,7 @@ namespace NursingBot.Features
             }
         }
 
-        private static async Task OnReactionRemoved(Cacheable<IUserMessage, ulong> _, Cacheable<IMessageChannel, ulong> __, SocketReaction reaction)
+        private static async Task OnReactionRemoved(SocketReaction reaction)
         {
             // 반응을 한 유저가 봇이 아니어야 함
             if (!reaction.User.IsSpecified || reaction.User.Value.IsBot) return;
@@ -357,8 +357,8 @@ namespace NursingBot.Features
         {
             base.OnModuleBuilding(commandService, builder);
 
-            Global.Bot!.Client.ReactionAdded += OnReactionAdded;
-            Global.Bot!.Client.ReactionRemoved += OnReactionRemoved;
+            Global.Bot!.Client.ReactionAdded += (_, _, reaction) => Task.Run(() => OnReactionAdded(reaction));
+            Global.Bot!.Client.ReactionRemoved += (_, _, reaction) => Task.Run(() => OnReactionRemoved(reaction));
         }
     }
 }
