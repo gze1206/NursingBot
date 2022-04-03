@@ -25,8 +25,9 @@ namespace NursingBot.Feature
         {
             base.OnModuleBuilding(commandService, builder);
 
-            Global.Bot!.Client.ReactionAdded += (_, _, reaction) => Task.Run(() => OnReactionAdded(reaction));
-            Global.Bot!.Client.ReactionRemoved += (_, _, reaction) => Task.Run(() => OnReactionRemoved(reaction));
+            Global.Bot!.Client.ReactionAdded += (_, _, reaction) => OnReactionAdded(reaction);
+
+            Global.Bot!.Client.ReactionRemoved += (_, _, reaction) => OnReactionRemoved(reaction);
 
             for (int i = 0x01F1E6, max = 0x01F1FF; i <= max; i++)
             {

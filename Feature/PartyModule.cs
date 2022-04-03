@@ -357,8 +357,8 @@ namespace NursingBot.Features
         {
             base.OnModuleBuilding(commandService, builder);
 
-            Global.Bot!.Client.ReactionAdded += (_, _, reaction) => Task.Run(() => OnReactionAdded(reaction));
-            Global.Bot!.Client.ReactionRemoved += (_, _, reaction) => Task.Run(() => OnReactionRemoved(reaction));
+            Global.Bot!.Client.ReactionAdded += (_, _, reaction) => OnReactionAdded(reaction);
+            Global.Bot!.Client.ReactionRemoved += (_, _, reaction) => OnReactionRemoved(reaction);
         }
     }
 }
