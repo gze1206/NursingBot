@@ -324,7 +324,8 @@ namespace NursingBot.Features
                 {
                     var isClose = await msg.GetReactionUsersAsync(EMOJI_CLOSE, int.MaxValue)
                         .Flatten()
-                        .CountAsync() > 1;
+                        .Where(u => !u.IsBot)
+                        .CountAsync() > 0;
 
                     var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
                         .Flatten()

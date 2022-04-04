@@ -326,9 +326,17 @@ namespace NursingBot.Feature
 
                 if (emojiName.Equals(STR_CLOSE))
                 {
-                    vote.IsClosed = false;
-                    vote.ClosedAt = null;
+                    var isClose = await msg.GetReactionUsersAsync(EMOJI_CLOSE, int.MaxValue)
+                        .Flatten()
+                        .Where(u => !u.IsBot)
+                        .CountAsync() > 0;
+
                     vote.UpdatedAt = DateTime.UtcNow;
+                    if (!isClose)
+                    {
+                        vote.IsClosed = false;
+                        vote.ClosedAt = null;
+                    }
                     conn.Votes.Update(vote);
                     await conn.SaveChangesAsync();
 
