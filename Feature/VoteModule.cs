@@ -231,6 +231,7 @@ namespace NursingBot.Feature
                     var members = await msg.GetReactionUsersAsync(emojis[i], int.MaxValue)
                         .Flatten()
                         .Where(u => !u.IsBot)
+                        .Select(u => channel.Guild.GetUser(u.Id))
                         .ToArrayAsync();
 
                     usersPerEmoji[emojiStrings[i]] = members;
@@ -319,6 +320,7 @@ namespace NursingBot.Feature
                     var members = await msg.GetReactionUsersAsync(emojis[i], int.MaxValue)
                         .Flatten()
                         .Where(u => !u.IsBot)
+                        .Select(u => channel.Guild.GetUser(u.Id))
                         .ToArrayAsync();
 
                     usersPerEmoji[emojiStrings[i]] = members;

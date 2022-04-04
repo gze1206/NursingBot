@@ -220,6 +220,7 @@ namespace NursingBot.Features
                     var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
                         .Flatten()
                         .Where(u => !u.IsBot)
+                        .Select(u => channel.Guild.GetUser(u.Id))
                         .ToArrayAsync();
 
                     var embed = Build(author, recruit.Description, recruit.Date, member);
@@ -235,6 +236,7 @@ namespace NursingBot.Features
                     var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
                         .Flatten()
                         .Where(u => !u.IsBot)
+                        .Select(u => channel.Guild.GetUser(u.Id))
                         .ToArrayAsync();
 
                     var embed = Build(author, recruit.Description, recruit.Date, member, true);
@@ -310,6 +312,7 @@ namespace NursingBot.Features
                     var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
                         .Flatten()
                         .Where(u => !u.IsBot)
+                        .Select(u => channel.Guild.GetUser(u.Id))
                         .ToArrayAsync();
 
                     var embed = Build(author, recruit.Description, recruit.Date, member);
@@ -330,6 +333,7 @@ namespace NursingBot.Features
                     var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
                         .Flatten()
                         .Where(u => !u.IsBot)
+                        .Select(u => channel.Guild.GetUser(u.Id))
                         .ToArrayAsync();
 
                     var embed = Build(author, recruit.Description, recruit.Date, member, isClose);
