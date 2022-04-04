@@ -239,6 +239,12 @@ namespace NursingBot.Feature
 
                 if (emojiName.Equals(STR_CLOSE))
                 {
+                    if (vote.IsClosed)
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
                     vote.IsClosed = true;
                     vote.ClosedAt = DateTime.UtcNow;
                     vote.UpdatedAt = DateTime.UtcNow;
@@ -332,6 +338,12 @@ namespace NursingBot.Feature
                         .Flatten()
                         .Where(u => !u.IsBot)
                         .CountAsync() > 0;
+
+                    if (isClose == vote.IsClosed)
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
 
                     vote.UpdatedAt = DateTime.UtcNow;
                     if (!isClose)

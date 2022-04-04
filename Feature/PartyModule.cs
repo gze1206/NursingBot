@@ -233,6 +233,12 @@ namespace NursingBot.Features
                 }
                 else if (emojiName.Equals(STR_CLOSE))
                 {
+                    if (recruit.IsClosed)
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
+
                     var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
                         .Flatten()
                         .Where(u => !u.IsBot)
@@ -329,6 +335,12 @@ namespace NursingBot.Features
                         .Flatten()
                         .Where(u => !u.IsBot)
                         .CountAsync() > 0;
+
+                    if (isClose == recruit.IsClosed)
+                    {
+                        await transaction.RollbackAsync();
+                        return;
+                    }
 
                     var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
                         .Flatten()
