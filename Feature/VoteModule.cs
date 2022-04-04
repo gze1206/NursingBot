@@ -125,7 +125,7 @@ namespace NursingBot.Feature
         {
             var builder = new EmbedBuilder()
                 .WithTitle(isClosed ? "*[마감됨] 투표*" : "투표")
-                .WithDescription($"{author.Mention} 님이 개시한 투표입니다.");
+                .WithDescription($"{author?.Mention ?? "<UNKNOWN>"} 님이 개시한 투표입니다.");
 
             if (string.IsNullOrWhiteSpace(description))
             {
@@ -145,7 +145,7 @@ namespace NursingBot.Feature
                 {
                     memberText = string.Join(", ", users
                         .DistinctBy(u => u.Id)
-                        .Select(u => u.Username));
+                        .Select(u => (u as SocketGuildUser)?.DisplayName ?? u.Username));
                 }
 
                 if (string.IsNullOrWhiteSpace(memberText))

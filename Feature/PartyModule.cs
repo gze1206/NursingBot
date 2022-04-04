@@ -138,7 +138,7 @@ namespace NursingBot.Features
             {
                 memberText = string.Join(", ", users
                     .DistinctBy(u => u.Id)
-                    .Select(u => u.Username));
+                    .Select(u => (u as SocketGuildUser)?.DisplayName ?? u.Username));
             }
 
             if (string.IsNullOrWhiteSpace(memberText))
