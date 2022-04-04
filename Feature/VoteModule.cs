@@ -101,6 +101,7 @@ namespace NursingBot.Feature
                 await conn.SaveChangesAsync();
 
                 await transaction.CommitAsync();
+                await this.Context.Message.ReplyAsync("투표가 준비되었습니다.");
             }
             catch (Exception e)
             {
@@ -109,7 +110,6 @@ namespace NursingBot.Feature
                 await this.Context.Message.ReplyAsync($"투표 등록에 실패했습니다...\n{e.Message}");
             }
             
-            await this.Context.Message.ReplyAsync("투표가 준비되었습니다.");
         }
 
         private static Embed Build(IUser author, Vote vote, Dictionary<string, IUser[]>? usersPerEmoji)

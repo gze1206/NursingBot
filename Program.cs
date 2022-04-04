@@ -15,21 +15,9 @@ namespace NursingBot
                 await Log.Add(new ConsoleLogger());
                 await Log.Add(new NLogLogger());
 
-#if DEBUG
-                DotNetEnv.Env.TraversePath().Load();
-#else
-                DotNetEnv.Env.Load();
-#endif
+                var connectionString = GetConnectionString();
 
-                var conn = new MySqlConnectionStringBuilder()
-                {
-                    Server = DotNetEnv.Env.GetString("DB_SERVER"),
-                    Database = DotNetEnv.Env.GetString("DB_NAME"),
-                    UserID = DotNetEnv.Env.GetString("DB_USER"),
-                    Password = DotNetEnv.Env.GetString("DB_PW"),
-                };
-
-                await Database.Initialize(conn.ConnectionString);
+                await Database.Initialize(connectionString);
 
                 var superUser = DotNetEnv.Env.GetString("SUPER_USER");
                 if (!string.IsNullOrWhiteSpace(superUser)
@@ -52,6 +40,25 @@ namespace NursingBot
             {
                 NLog.LogManager.Shutdown();
             }
+        }
+
+        public static string GetConnectionString()
+        {
+#if DEBUG
+            DotNetEnv.Env.TraversePath().Load();
+#else
+                DotNetEnv.Env.Load();
+#endif
+
+            var conn = new MySqlConnectionStringBuilder()
+            {
+                Server = DotNetEnv.Env.GetString("DB_SERVER"),
+                Database = DotNetEnv.Env.GetString("DB_NAME"),
+                UserID = DotNetEnv.Env.GetString("DB_USER"),
+                Password = DotNetEnv.Env.GetString("DB_PW"),
+            };
+
+            return conn.ConnectionString;
         }
     }
 }

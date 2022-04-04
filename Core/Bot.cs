@@ -5,10 +5,8 @@ using Discord.WebSocket;
 using NursingBot.Logger;
 using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
-using NursingBot.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using NLog;
 using NLog.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,7 +29,8 @@ namespace NursingBot.Core
             {
                 GatewayIntents = GatewayIntents.GuildMessages
                     | GatewayIntents.GuildMessageReactions
-                    | GatewayIntents.Guilds,
+                    | GatewayIntents.Guilds
+                    | GatewayIntents.GuildVoiceStates,
             });
 
             this.CommandService = new CommandService(new CommandServiceConfig

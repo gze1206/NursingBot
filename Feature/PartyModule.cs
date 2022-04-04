@@ -38,16 +38,43 @@ namespace NursingBot.Features
                 return;
             }
 
-            var partyChannel = new PartyChannel
-            {
-                ServerId = server.Id,
-                ChannelId = channel.Id,
-            };
-
             using var context = await Database.Instance.CreateDbContextAsync();
-            await context.PartyChannels.AddAsync(partyChannel);
-            await context.SaveChangesAsync();
-            await this.Context.Message.ReplyAsync("파티 모집 채널 설정에 성공했습니다!");
+            using var transaction = await context.Database.BeginTransactionAsync();
+
+            try
+            {
+                var partyChannel = await context.PartyChannels.FirstOrDefaultAsync(partyChannel =>
+                    partyChannel.ServerId == server.Id);
+
+                if (partyChannel == null)
+                {
+                    partyChannel = new PartyChannel
+                    {
+                        ServerId = server.Id,
+                    };
+                }
+
+                partyChannel.ChannelId = channel.Id;
+
+                if (partyChannel.Id != 0)
+                {
+                    context.PartyChannels.Update(partyChannel);
+                    await context.SaveChangesAsync();
+                    await this.Context.Message.ReplyAsync("파티 모집 채널 재설정에 성공했습니다!");
+                }
+                else
+                {
+                    await context.PartyChannels.AddAsync(partyChannel);
+                    await context.SaveChangesAsync();
+                    await this.Context.Message.ReplyAsync("파티 모집 채널 설정에 성공했습니다!");
+                }
+            }
+            catch (Exception e)
+            {
+                await transaction.RollbackAsync();
+                await Log.Fatal(e);
+                await this.Context.Message.ReplyAsync("파티 모집 채널 설정에 실패했습니다...");
+            }
         }
 
         [Command("add")]

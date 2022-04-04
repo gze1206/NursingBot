@@ -50,16 +50,13 @@ namespace NursingBot.Core
         public DbSet<PartyChannel> PartyChannels { get; private set; }
         public DbSet<PartyRecruit> PartyRecruits { get; private set; }
         public DbSet<Vote> Votes { get; private set; }
+        public DbSet<WardConfig> WardConfigs { get; private set; }
 
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         { }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<Server>()
-                .Property(s => s.Id)
-                .ValueGeneratedOnAdd();
-
             modelBuilder.Entity<Server>()
                 .HasIndex(s => s.DiscordUID);
 
@@ -70,6 +67,9 @@ namespace NursingBot.Core
                 .HasOne<PartyChannel>(pr => pr.PartyChannel);
 
             modelBuilder.Entity<Vote>()
+                .HasOne<Server>(v => v.Server);
+
+            modelBuilder.Entity<WardConfig>()
                 .HasOne<Server>(v => v.Server);
 
             base.OnModelCreating(modelBuilder);
