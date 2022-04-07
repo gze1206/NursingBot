@@ -179,7 +179,8 @@ namespace NursingBot.Feature
 
                 var oldName = channel.Name;
                 await channel.ModifyAsync(properties => properties.Name = newName);
-                await this.Context.Message.ReplyAsync($"병실 이름 변경에 성공했습니다!\n{oldName} -> {newName}");
+                await this.Context.Message.ReplyAsync($"{this.Context.User.Mention} 병실 이름 변경에 성공했습니다!\n{oldName} -> {newName}");
+                await Log.Info($"{this.Context.User.Username} 병실 이름 변경 / {oldName} -> {newName}");
             }
             catch (Exception e)
             {
@@ -236,6 +237,7 @@ namespace NursingBot.Feature
                             properties => properties.CategoryId = wardConfig.CategoryId);
 
                         await guild.MoveAsync(user, ward);
+                        await Log.Info($"{user.DisplayName} 병실 생성");
                     }
                 }
                 
@@ -271,6 +273,7 @@ namespace NursingBot.Feature
 
                     // 그 병실을 폐쇄
                     await oldChannel.DeleteAsync();
+                    await Log.Info($"{user.DisplayName} 나감 -> {oldChannel.Name} 병실 소멸");
                 }
             }
             catch (Exception e)
