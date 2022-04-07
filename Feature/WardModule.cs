@@ -177,8 +177,9 @@ namespace NursingBot.Feature
                     return;
                 }
 
+                var oldName = channel.Name;
                 await channel.ModifyAsync(properties => properties.Name = newName);
-                await this.Context.Message.ReplyAsync("병실 이름 변경에 성공했습니다!");
+                await this.Context.Message.ReplyAsync($"병실 이름 변경에 성공했습니다!\n{oldName} -> {newName}");
             }
             catch (Exception e)
             {
