@@ -151,6 +151,7 @@ namespace NursingBot.Feature
 
             if (channel.CategoryId == null)
             {
+                await this.Context.Message.ReplyAsync("현재 병실에 입장해있지 않습니다.");
                 return;
             }
 
@@ -181,6 +182,83 @@ namespace NursingBot.Feature
                 await channel.ModifyAsync(properties => properties.Name = newName);
                 await this.Context.Message.ReplyAsync($"{this.Context.User.Mention} 병실 이름 변경에 성공했습니다!\n{oldName} -> {newName}");
                 await Log.Info($"{this.Context.User.Username} 병실 이름 변경 / {oldName} -> {newName}");
+            }
+            catch (Exception e)
+            {
+                await transaction.RollbackAsync();
+                await Log.Fatal(e);
+                await this.Context.Message.ReplyAsync("음성 채널 이름 변경에 실패했습니다...");
+            }
+        }
+
+        [Command("limit")]
+        public async Task LimitAsync(int value)
+        {
+            if (!Database.CachedServers.TryGetValue(this.Context.Guild.Id, out var server))
+            {
+                await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                return;
+            }
+
+            if (this.Context.User is not SocketGuildUser user)
+            {
+                return;
+            }
+
+            if (value > 99)
+            {
+                await this.Context.Message.ReplyAsync("최대 99까지 입력 가능합니다.");
+                return;
+            }
+
+            var channel = user.VoiceChannel;
+
+            if (channel == null)
+            {
+                await this.Context.Message.ReplyAsync("현재 음성 채널에 입장해있지 않습니다.");
+                return;
+            }
+
+            if (channel.CategoryId == null)
+            {
+                await this.Context.Message.ReplyAsync("현재 병실에 입장해있지 않습니다.");
+                return;
+            }
+
+            using var conn = await Database.Instance.CreateDbContextAsync();
+            using var transaction = await conn.Database.BeginTransactionAsync();
+
+            try
+            {
+                var wardConfig = await conn.WardConfigs
+                        .FirstOrDefaultAsync(wardConfig =>
+                            wardConfig.ServerId == server.Id
+                            && wardConfig.CategoryId == channel.CategoryId
+                            && !wardConfig.IsDeleted);
+
+                if (wardConfig == null)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                if (channel.Id == wardConfig.HospitalizationId)
+                {
+                    await transaction.RollbackAsync();
+                    return;
+                }
+
+                var name = channel.Name;
+                var oldLimit = channel.UserLimit;
+                int? newLimit = value < 1 ? null : value;
+                await channel.ModifyAsync(properties => properties.UserLimit = newLimit);
+                await this.Context.Message.ReplyAsync($"{this.Context.User.Mention} 병실 인원 제한 변경에 성공했습니다!\n{LimitToString(oldLimit)} -> {LimitToString(newLimit)}");
+                await Log.Info($"{this.Context.User.Username} 병실 인원 제한 변경 / {LimitToString(oldLimit)} -> {LimitToString(newLimit)}");
+
+                static string LimitToString(int? value)
+                {
+                    return value?.ToString() ?? "무제한";
+                }
             }
             catch (Exception e)
             {
@@ -231,10 +309,18 @@ namespace NursingBot.Feature
                             && wardConfig.HospitalizationId == newChannel.Id
                             && !wardConfig.IsDeleted);
 
-                    if (wardConfig != null)
+                    if (wardConfig != null && newChannel.CategoryId == wardConfig.CategoryId)
                     {
                         var ward = await newChannel.Guild.CreateVoiceChannelAsync($"{user.DisplayName}의 병실",
-                            properties => properties.CategoryId = wardConfig.CategoryId);
+                            properties =>
+                            {
+                                // 입원 신청 채널에서 가져올 세팅들 : 카테고리, 비트레이트, 지역, 최대 인원, 권한 오버라이드
+                                properties.CategoryId = newChannel.CategoryId;
+                                properties.Bitrate = newChannel.Bitrate;
+                                properties.RTCRegion = newChannel.RTCRegion;
+                                properties.UserLimit = newChannel.UserLimit;
+                                properties.PermissionOverwrites = newChannel.PermissionOverwrites.ToList();
+                            });
 
                         await guild.MoveAsync(user, ward);
                         await Log.Info($"{user.DisplayName} 병실 생성");
