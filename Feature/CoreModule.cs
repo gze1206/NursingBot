@@ -10,7 +10,7 @@ namespace NursingBot.Features
 {
     public class CoreModule : InteractionModuleBase<SocketInteractionContext>
     {
-        [SlashCommand("help", "명령어 목록을 DM으로 전송합니다.")]
+        [SlashCommand("help", "명령어 목록이 담긴 링크를 전송합니다.")]
         public async Task HelpAsync()
         {
             var builder = new EmbedBuilder()
