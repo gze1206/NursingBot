@@ -1,11 +1,11 @@
 using Discord;
-using Discord.Commands;
+using Discord.Interactions;
 using NursingBot.Features.Preconditions;
 using NRandom = NursingBot.Core.Random;
 
 namespace NursingBot.Features
 {
-    public class RandomModule : ModuleBase<SocketCommandContext>
+    public class RandomModule : InteractionModuleBase<SocketInteractionContext>
     {
         private static readonly string[] YesNo = new[]
         {
@@ -22,10 +22,9 @@ namespace NursingBot.Features
 
         private static readonly char pickDelimiter = ',';
 
-        [Command("yn")]
-        [Summary("질문에 대해 Yes or No로 답변합니다.")]
+        [SlashCommand("yn", "질문에 대해 Yes or No로 답변합니다.")]
         [RequireRegister]
-        public Task YesOrNoAsync([Remainder][Summary("답변을 듣고 싶은 질문을 입력해주세요.")] string question)
+        public Task YesOrNoAsync([Summary("question", "답변을 듣고 싶은 질문을 입력해주세요.")] string question)
         {
             var embed = new EmbedBuilder()
                 .WithTitle("질문에 대한 답입니다.")
@@ -33,13 +32,12 @@ namespace NursingBot.Features
                 .AddField("Answer", YesNo[NRandom.Next(2)])
                 .Build();
 
-            return this.Context.Message.ReplyAsync(embed: embed);
+            return this.Context.Interaction.RespondAsync(embed: embed);
         }
 
-        [Command("m8b")]
-        [Summary("질문에 대해 임의로 답변합니다.")]
+        [SlashCommand("m8b", "질문에 대해 임의로 답변합니다.")]
         [RequireRegister]
-        public Task Magic8BallAsync([Remainder][Summary("답변을 듣고 싶은 질문을 입력해주세요.")] string question)
+        public Task Magic8BallAsync([Summary("question", "답변을 듣고 싶은 질문을 입력해주세요.")] string question)
         {
             var embed = new EmbedBuilder()
                 .WithTitle("질문에 대한 답입니다.")
@@ -47,21 +45,19 @@ namespace NursingBot.Features
                 .AddField("Answer", Magic8Ball[NRandom.Next(Magic8Ball.Length)])
                 .Build();
 
-            return this.Context.Message.ReplyAsync(embed: embed);
+            return this.Context.Interaction.RespondAsync(embed: embed);
         }
 
-        [Command("pick")]
-        [Summary("질문에 대해 임의로 답변합니다.\n답변은 질문과 함께 입력한 답변 목록에서 하나를 선택합니다.\n답변 목록이 비었거나 항목이 2개 미만일 경우 Yes or No로 답변합니다.")]
+        [SlashCommand("pick", "질문에 대해 임의로 답변합니다.\n답변은 질문과 함께 입력한 답변 목록에서 하나를 선택합니다.\n답변 목록이 비었거나 항목이 2개 미만일 경우 Yes or No로 답변합니다.")]
         [RequireRegister]
         public Task PickAsync(
-            [Remainder]
-            [Summary("답변을 듣고 싶은 질문을 입력해주세요.\n질문 뒤에 ,를 붙인 뒤 답변 목록을 작성합니다.\n각 답변은 ,로 구분해 입력합니다.\n답변 목록을 생략하면 Yes or No로 답변됩니다.\n예시 - 대충 질문,답1,답2,답3")]
-            string input
+            [Summary("question", "답변을 듣고 싶은 질문을 입력해주세요.")]
+            string question,
+            [Summary("answers", "답변 목록을 작성합니다.\n각 답변은 ,로 구분해 입력합니다.\n답변 목록을 생략하면 Yes or No로 답변됩니다.\n예시 - 답1,답2,답3")]
+            string rawAnswers
         )
         {
-            var tokens = input.Split(pickDelimiter).AsEnumerable();
-            var question = tokens.Take(1).FirstOrDefault() ?? string.Empty;
-            var answers = tokens.Skip(1).ToArray();
+            var answers = rawAnswers.Split(pickDelimiter).ToArray();
 
             if (answers.Length < YesNo.Length)
             {
@@ -74,7 +70,7 @@ namespace NursingBot.Features
                 .AddField("Answer", answers[NRandom.Next(answers.Length)])
                 .Build();
 
-            return this.Context.Message.ReplyAsync(embed: embed);
+            return this.Context.Interaction.RespondAsync(embed: embed);
         }
     }
 }

@@ -1,6 +1,5 @@
 using Discord;
-using Discord.Commands;
-using Discord.Commands.Builders;
+using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using NursingBot.Core;
@@ -11,9 +10,9 @@ using NursingBot.Models;
 
 namespace NursingBot.Features
 {
-    [Group("party")]
+    [Group("party", "특정 목적을 가지고 사람을 모으기 위한 파티 모집 기능입니다.")]
     [RequireRegister]
-    public class PartyModule : ModuleBase<SocketCommandContext>
+    public class PartyModule : InteractionModuleBase<SocketInteractionContext>
     {
         private static readonly string STR_OK = "🇴";
         private static readonly string STR_NO = "🇽";
@@ -27,14 +26,13 @@ namespace NursingBot.Features
             STR_OK, STR_CLOSE
         };
 
-        [Command("register")]
-        [Summary("파티 모집 공고를 등록할 채널 설정 / 변경")]
+        [SlashCommand("register", "파티 모집 공고를 등록할 채널 설정 / 변경")]
         [RequireAdminPermission]
-        public async Task RegisterAsync([Summary("파티 모집 공고가 올라갈 채널입니다. #채널이름 형식으로 입력하시면 됩니다.")] ITextChannel channel)
+        public async Task RegisterAsync([Summary("channel", "파티 모집 공고가 올라갈 채널입니다.")] ITextChannel channel)
         {
             if (!Database.CachedServers.TryGetValue(channel.GuildId, out var server))
             {
-                await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                await this.Context.Interaction.RespondAsync("서버 정보 조회에 실패했습니다...", ephemeral: true);
                 return;
             }
 
@@ -60,43 +58,36 @@ namespace NursingBot.Features
                 {
                     context.PartyChannels.Update(partyChannel);
                     await context.SaveChangesAsync();
-                    await this.Context.Message.ReplyAsync("파티 모집 채널 재설정에 성공했습니다!");
+                    await this.Context.Interaction.RespondAsync("파티 모집 채널 재설정에 성공했습니다!");
                 }
                 else
                 {
                     await context.PartyChannels.AddAsync(partyChannel);
                     await context.SaveChangesAsync();
-                    await this.Context.Message.ReplyAsync("파티 모집 채널 설정에 성공했습니다!");
+                    await this.Context.Interaction.RespondAsync("파티 모집 채널 설정에 성공했습니다!");
                 }
+
+                await transaction.CommitAsync();
             }
             catch (Exception e)
             {
                 await transaction.RollbackAsync();
                 await Log.Fatal(e);
-                await this.Context.Message.ReplyAsync("파티 모집 채널 설정에 실패했습니다...");
+                await this.Context.Interaction.RespondAsync("파티 모집 채널 설정에 실패했습니다...", ephemeral: true);
             }
         }
 
-        [Command("add")]
-        [Summary("파티 모집 공고 등록")]
-        public async Task AddAsync([Remainder][Summary("설명과 예정 일시를 {설명};{예정 일시} 형태로 적어주시면 됩니다.")] string args)
+        [SlashCommand("add", "파티 모집 공고 등록")]
+        public async Task AddAsync([Summary("description", "무슨 파티에서 구인을 하는 것인지에 대한 설명")] string description, [Summary("date", "파티가 행동을 할 예정 일시")] string date)
         {
             if (this.Context.Channel is SocketTextChannel channel)
             {
-                var tokens = args.Split(';');
-                if (tokens.Length != 2)
-                {
-                    await this.ReplyAsync("형식이 올바르지 않습니다.");
-                    return;
-                }
 
                 if (!Database.CachedServers.TryGetValue(channel.Guild.Id, out var server))
                 {
-                    await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                    await this.Context.Interaction.RespondAsync("서버 정보 조회에 실패했습니다...", ephemeral: true);
                     return;
                 }
-
-                var (description, date) = (tokens[0], tokens[1]);
 
                 if (string.IsNullOrWhiteSpace(description))
                 {
@@ -133,6 +124,8 @@ namespace NursingBot.Features
                         Date = date,
                     };
 
+                    await this.Context.Interaction.DeferAsync();
+
                     await msg.AddReactionsAsync(new[]
                     {
                         EMOJI_OK, EMOJI_NO, EMOJI_CLOSE
@@ -149,11 +142,11 @@ namespace NursingBot.Features
                 {
                     await transaction.RollbackAsync();
                     await Log.Fatal(e);
-                    await this.Context.Message.ReplyAsync($"모집 공고 등록에 실패했습니다...\n{e.Message}");
+                    await this.Context.Interaction.RespondAsync($"모집 공고 등록에 실패했습니다...\n{e.Message}", ephemeral: true);
                     return;
                 }
 
-                await this.Context.Message.ReplyAsync("파티 모집 공고를 등록했습니다!");
+                await this.Context.Interaction.FollowupAsync("파티 모집 공고를 등록했습니다!");
             }
         }
 
@@ -397,9 +390,9 @@ namespace NursingBot.Features
             }
         }
 
-        protected override void OnModuleBuilding(CommandService commandService, ModuleBuilder builder)
+        public override void OnModuleBuilding(InteractionService commandService, ModuleInfo moduleinfo)
         {
-            base.OnModuleBuilding(commandService, builder);
+            base.OnModuleBuilding(commandService, moduleinfo);
 
             Global.Bot!.Client.ReactionAdded += (_, _, reaction) =>
             {

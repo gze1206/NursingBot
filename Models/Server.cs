@@ -11,8 +11,6 @@ namespace NursingBot.Models
 
         public ulong DiscordUID { get; set; }
 
-        public string Prefix { get; set; } = "!";
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

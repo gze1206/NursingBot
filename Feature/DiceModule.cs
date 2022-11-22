@@ -1,11 +1,11 @@
 using Discord;
-using Discord.Commands;
+using Discord.Interactions;
 using NursingBot.Features.Preconditions;
 using NRandom = NursingBot.Core.Random;
 
 namespace NursingBot.Features
 {
-    public class DiceModule : ModuleBase<SocketCommandContext>
+    public class DiceModule : InteractionModuleBase<SocketInteractionContext>
     {
         private static readonly int MinFace = 2;
         private static readonly int MaxFace = 100;
@@ -15,11 +15,9 @@ namespace NursingBot.Features
         private static readonly string FaceErrorMessage = $"주사위의 면이 올바르지 않습니다. 최소 {MinFace}부터 최대 {MaxFace}까지 지원합니다.";
         private static readonly string AmountErrorMessage = $"주사위의 수량이 올바르지 않습니다. 최소 {MinAmount}부터 최대 {MaxAmount}까지 지원합니다.";
 
-        [Command("dice")]
-        [Alias("d", "roll")]
-        [Summary("다면체 주사위를 굴린 뒤 그 결과를 표시합니다.")]
+        [SlashCommand("dice", "다면체 주사위를 굴린 뒤 그 결과를 표시합니다.")]
         [RequireRegister]
-        public Task RollAsync([Summary("주사위를 표현하는 식입니다.\n예시 - 1d6+1")] string eval)
+        public Task RollAsync([Summary("eval", "주사위를 표현하는 식입니다.\n예시 - 1d6+1")] string eval)
         {
             var tokens = eval
                 .Trim()
@@ -33,7 +31,7 @@ namespace NursingBot.Features
 
             if (tokens.Length < 1 || tokens.Length > values.Length)
             {
-                return this.Context.Message.ReplyAsync(FormatErrorMessage);
+                return this.Context.Interaction.RespondAsync(FormatErrorMessage, ephemeral: true);
             }
 
             for (int i = 0, max = tokens.Length; i < max; i++)
@@ -44,18 +42,18 @@ namespace NursingBot.Features
                 }
                 else
                 {
-                    return this.Context.Message.ReplyAsync(FormatErrorMessage);
+                    return this.Context.Interaction.RespondAsync(FormatErrorMessage, ephemeral: true);
                 }
             }
 
             if (values[1] < MinFace || values[1] > MaxFace)
             {
-                return this.Context.Message.ReplyAsync(FaceErrorMessage);
+                return this.Context.Interaction.RespondAsync(FaceErrorMessage, ephemeral: true);
             }
 
             if (values[0] < MinAmount || values[0] > MaxAmount)
             {
-                return this.Context.Message.ReplyAsync(AmountErrorMessage);
+                return this.Context.Interaction.RespondAsync(AmountErrorMessage, ephemeral: true);
             }
 
             List<int> results = new();
@@ -75,7 +73,7 @@ namespace NursingBot.Features
                 .AddField("Detail", string.Join('+', results).Replace("+-","-"))
                 .Build();
 
-            return this.Context.Message.ReplyAsync(embed: embed);
+            return this.Context.Interaction.RespondAsync(embed: embed);
         }
     }
 }

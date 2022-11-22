@@ -1,6 +1,5 @@
 ﻿using Discord;
-using Discord.Commands;
-using Discord.Commands.Builders;
+using Discord.Interactions;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using NursingBot.Core;
@@ -12,7 +11,7 @@ using System.Text;
 namespace NursingBot.Feature
 {
     [RequireRegister]
-    public class VoteModule : ModuleBase<SocketCommandContext>
+    public class VoteModule : InteractionModuleBase<SocketInteractionContext>
     {
         private const int MAX_REACTIONS = 19;
 
@@ -21,9 +20,9 @@ namespace NursingBot.Feature
         private static readonly string STR_CLOSE = "🚫";
         private static readonly Emoji EMOJI_CLOSE = Emoji.Parse(STR_CLOSE);
 
-        protected override void OnModuleBuilding(CommandService commandService, ModuleBuilder builder)
+        public override void OnModuleBuilding(InteractionService commandService, ModuleInfo moduleInfo)
         {
-            base.OnModuleBuilding(commandService, builder);
+            base.OnModuleBuilding(commandService, moduleInfo);
 
             Global.Bot!.Client.ReactionAdded += (_, _, reaction) =>
             {
@@ -45,8 +44,8 @@ namespace NursingBot.Feature
             }
         }
 
-        [Command("vote")]
-        public async Task VoteAsync([Remainder] string args)
+        [SlashCommand("vote", "투표를 등록합니다.")]
+        public async Task VoteAsync([Summary("description", "투표에 대한 설명입니다.")]string description, [Summary("choices", "투표 항목 목록을 작성합니다.\n각 항목은 ;로 구분됩니다.")] string rawChoices)
         {
             if (Context.Channel is not SocketTextChannel channel)
             {
@@ -55,24 +54,21 @@ namespace NursingBot.Feature
 
             if (!Database.CachedServers.TryGetValue(channel.Guild.Id, out var server))
             {
-                await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                await this.Context.Interaction.RespondAsync("서버 정보 조회에 실패했습니다...", ephemeral: true);
                 return;
             }
 
-            var tokens = args.Split(';');
-
-            if (tokens.Length < 2)
+            var choices = rawChoices.Split(';');
+            
+            if (choices.Length < 1)
             {
-                await ReplyAsync("투표 항목이 1개 이상 있어야 합니다.");
+                await this.Context.Interaction.RespondAsync("투표 항목이 1개 이상 있어야 합니다.", ephemeral: true);
                 return;
             }
-
-            var description = tokens[0];
-            var choices = tokens.Skip(1).ToArray();
 
             if (choices.Length > MAX_REACTIONS)
             {
-                await ReplyAsync($"디스코드 정책 상 투표 항목은 최대 {MAX_REACTIONS}까지만 가능합니다.");
+                await this.Context.Interaction.RespondAsync($"디스코드 정책 상 투표 항목은 최대 {MAX_REACTIONS}까지만 가능합니다.", ephemeral: true);
                 return;
             }
 
@@ -101,13 +97,13 @@ namespace NursingBot.Feature
                 await conn.SaveChangesAsync();
 
                 await transaction.CommitAsync();
-                await this.Context.Message.ReplyAsync("투표가 준비되었습니다.");
+                await this.Context.Interaction.RespondAsync("투표가 준비되었습니다.");
             }
             catch (Exception e)
             {
                 await transaction.RollbackAsync();
                 await Log.Fatal(e);
-                await this.Context.Message.ReplyAsync($"투표 등록에 실패했습니다...\n{e.Message}");
+                await this.Context.Interaction.RespondAsync($"투표 등록에 실패했습니다...\n{e.Message}", ephemeral: true);
             }
             
         }
