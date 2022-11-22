@@ -1,6 +1,6 @@
 ﻿using Discord;
-using Discord.Commands;
-using Discord.Commands.Builders;
+using Discord.Interactions;
+using Discord.Interactions.Builders;
 using Discord.WebSocket;
 using Microsoft.EntityFrameworkCore;
 using NursingBot.Core;
@@ -12,12 +12,12 @@ using NursingBot.Models;
 namespace NursingBot.Feature
 {
     [RequireRegister]
-    [Group("ward")]
-    public class WardModule : ModuleBase<SocketCommandContext>
+    [Group("ward", "병실(자동으로 만들고 지워지는 음성채널)에 관련된 기능입니다.")]
+    public class WardModule : InteractionModuleBase<SocketInteractionContext>
     {
-        protected override void OnModuleBuilding(CommandService commandService, ModuleBuilder builder)
+        public override void OnModuleBuilding(InteractionService interactionService, ModuleInfo moduleInfo)
         {
-            base.OnModuleBuilding(commandService, builder);
+            base.OnModuleBuilding(interactionService, moduleInfo);
 
             Global.Bot!.Client.UserVoiceStateUpdated += (user, oldVoiceState, newVoiceState) =>
             {
@@ -27,8 +27,8 @@ namespace NursingBot.Feature
         }
 
         [RequireAdminPermission]
-        [Command("category")]
-        public async Task SetCategoryAsync(SocketCategoryChannel category)
+        [SlashCommand("category", "입원 기능을 활성화할 카테고리를 지정합니다.\n해당 카테고리의 모든 채널이 삭제되고, 입원 신청 채널이 생성됩니다.\n해당 채널에 유저가 진입하면 새 채널을 만듭니다.")]
+        public async Task SetCategoryAsync([Summary("category", "입원 기능에 사용할 카테고리를 고릅니다.")]SocketCategoryChannel category)
         {
             if (category == null)
             {
@@ -37,7 +37,7 @@ namespace NursingBot.Feature
 
             if (!Database.CachedServers.TryGetValue(category.Guild.Id, out var server))
             {
-                await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                await this.Context.Interaction.RespondAsync("서버 정보 조회에 실패했습니다...", ephemeral: true);
                 return;
             }
 
@@ -52,7 +52,7 @@ namespace NursingBot.Feature
 
                 if (hasDuplicated)
                 {
-                    await this.Context.Message.ReplyAsync("이미 카테고리가 설정되어 있습니다.");
+                    await this.Context.Interaction.RespondAsync("이미 카테고리가 설정되어 있습니다.", ephemeral: true);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -71,7 +71,7 @@ namespace NursingBot.Feature
                 await conn.SaveChangesAsync();
 
                 await transaction.CommitAsync();
-                await this.Context.Message.ReplyAsync("카테고리 설정이 완료되었습니다.");
+                await this.Context.Interaction.RespondAsync("카테고리 설정이 완료되었습니다.");
             }
             catch (Exception e)
             {
@@ -81,12 +81,12 @@ namespace NursingBot.Feature
         }
 
         [RequireAdminPermission]
-        [Command("disable")]
+        [SlashCommand("disable", "이 서버에서 입원 기능을 비활성화합니다.\n더 이상 입원 채널에 유저가 진입해도 새 병실을 만들지 않습니다.\n카테고리를 변경하기 위해선 이 명령어로 이전 설정을 지워주어야 합니다.")]
         public async Task DisableAsync()
         {
             if (!Database.CachedServers.TryGetValue(this.Context.Guild.Id, out var server))
             {
-                await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                await this.Context.Interaction.RespondAsync("서버 정보 조회에 실패했습니다...", ephemeral: true);
                 return;
             }
 
@@ -101,7 +101,7 @@ namespace NursingBot.Feature
 
                 if (wardConfig == null)
                 {
-                    await this.Context.Message.ReplyAsync("카테고리가 설정되어 있지 않습니다.");
+                    await this.Context.Interaction.RespondAsync("카테고리가 설정되어 있지 않습니다.", ephemeral: true);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -113,7 +113,7 @@ namespace NursingBot.Feature
                 await conn.SaveChangesAsync();
 
                 await transaction.CommitAsync();
-                await this.Context.Message.ReplyAsync("입원 기능이 비활성화되었습니다.");
+                await this.Context.Interaction.RespondAsync("입원 기능이 비활성화되었습니다.");
             }
             catch (Exception e)
             {
@@ -122,12 +122,12 @@ namespace NursingBot.Feature
             }
         }
 
-        [Command("rename")]
-        public async Task RenameAsync([Remainder] string newName)
+        [SlashCommand("rename", "현재 입장해있는 병실의 이름을 바꿉니다.\n병실에 입장해있다면 누구나 이 명령어를 사용할 수 있습니다.")]
+        public async Task RenameAsync([Summary("new_name", "사용할 새 이름")]string newName)
         {
             if (!Database.CachedServers.TryGetValue(this.Context.Guild.Id, out var server))
             {
-                await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                await this.Context.Interaction.RespondAsync("서버 정보 조회에 실패했습니다...", ephemeral: true);
                 return;
             }
 
@@ -145,13 +145,13 @@ namespace NursingBot.Feature
 
             if (channel == null)
             {
-                await this.Context.Message.ReplyAsync("현재 음성 채널에 입장해있지 않습니다.");
+                await this.Context.Interaction.RespondAsync("현재 음성 채널에 입장해있지 않습니다.", ephemeral: true);
                 return;
             }
 
             if (channel.CategoryId == null)
             {
-                await this.Context.Message.ReplyAsync("현재 병실에 입장해있지 않습니다.");
+                await this.Context.Interaction.RespondAsync("현재 병실에 입장해있지 않습니다.", ephemeral: true);
                 return;
             }
 
@@ -180,23 +180,23 @@ namespace NursingBot.Feature
 
                 var oldName = channel.Name;
                 await channel.ModifyAsync(properties => properties.Name = newName);
-                await this.Context.Message.ReplyAsync($"{this.Context.User.Mention} 병실 이름 변경에 성공했습니다!\n{oldName} -> {newName}");
+                await this.Context.Interaction.RespondAsync($"{this.Context.User.Mention} 병실 이름 변경에 성공했습니다!\n{oldName} -> {newName}");
                 await Log.Info($"{this.Context.User.Username} 병실 이름 변경 / {oldName} -> {newName}");
             }
             catch (Exception e)
             {
                 await transaction.RollbackAsync();
                 await Log.Fatal(e);
-                await this.Context.Message.ReplyAsync("음성 채널 이름 변경에 실패했습니다...");
+                await this.Context.Interaction.RespondAsync("음성 채널 이름 변경에 실패했습니다...", ephemeral: true);
             }
         }
 
-        [Command("limit")]
-        public async Task LimitAsync(int value)
+        [SlashCommand("limit", "현재 입장해있는 병실의 인원 제한을 바꿉니다.\n병실에 입장해있다면 누구나 이 명령어를 사용할 수 있습니다.")]
+        public async Task LimitAsync([Summary("new_limits", "사용할 새 제한")]int value)
         {
             if (!Database.CachedServers.TryGetValue(this.Context.Guild.Id, out var server))
             {
-                await this.Context.Message.ReplyAsync("서버 정보 조회에 실패했습니다...");
+                await this.Context.Interaction.RespondAsync("서버 정보 조회에 실패했습니다...", ephemeral: true);
                 return;
             }
 
@@ -207,7 +207,7 @@ namespace NursingBot.Feature
 
             if (value > 99)
             {
-                await this.Context.Message.ReplyAsync("최대 99까지 입력 가능합니다.");
+                await this.Context.Interaction.RespondAsync("최대 99까지 입력 가능합니다.", ephemeral: true);
                 return;
             }
 
@@ -215,13 +215,13 @@ namespace NursingBot.Feature
 
             if (channel == null)
             {
-                await this.Context.Message.ReplyAsync("현재 음성 채널에 입장해있지 않습니다.");
+                await this.Context.Interaction.RespondAsync("현재 음성 채널에 입장해있지 않습니다.", ephemeral: true);
                 return;
             }
 
             if (channel.CategoryId == null)
             {
-                await this.Context.Message.ReplyAsync("현재 병실에 입장해있지 않습니다.");
+                await this.Context.Interaction.RespondAsync("현재 병실에 입장해있지 않습니다.", ephemeral: true);
                 return;
             }
 
@@ -252,7 +252,7 @@ namespace NursingBot.Feature
                 var oldLimit = channel.UserLimit;
                 int? newLimit = value < 1 ? null : value;
                 await channel.ModifyAsync(properties => properties.UserLimit = newLimit);
-                await this.Context.Message.ReplyAsync($"{this.Context.User.Mention} 병실 인원 제한 변경에 성공했습니다!\n{LimitToString(oldLimit)} -> {LimitToString(newLimit)}");
+                await this.Context.Interaction.RespondAsync($"{this.Context.User.Mention} 병실 인원 제한 변경에 성공했습니다!\n{LimitToString(oldLimit)} -> {LimitToString(newLimit)}");
                 await Log.Info($"{this.Context.User.Username} 병실 인원 제한 변경 / {LimitToString(oldLimit)} -> {LimitToString(newLimit)}");
 
                 static string LimitToString(int? value)
@@ -264,7 +264,7 @@ namespace NursingBot.Feature
             {
                 await transaction.RollbackAsync();
                 await Log.Fatal(e);
-                await this.Context.Message.ReplyAsync("음성 채널 이름 변경에 실패했습니다...");
+                await this.Context.Interaction.RespondAsync("음성 채널 이름 변경에 실패했습니다...", ephemeral: true);
             }
         }
 
