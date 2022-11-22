@@ -1,5 +1,4 @@
 using Discord;
-using Discord.Commands;
 using Discord.Net;
 using Discord.WebSocket;
 using NursingBot.Logger;
@@ -8,17 +7,15 @@ using System.Reflection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NLog.Extensions.Logging;
-using Microsoft.EntityFrameworkCore;
+using Discord.Interactions;
 
 namespace NursingBot.Core
 {
     public class Bot
     {
-        public static readonly string DefaultCommandPrefix = "!";
-        
-        private static readonly string botStatus = "'!help'로 명령어 목록을 볼 수 있다고 안내";
+        private static readonly string botStatus = "'/help'로 명령어 목록을 볼 수 있다고 안내";
 
-        public CommandService CommandService { get; private set; }
+        public InteractionService CommandService { get; private set; }
         public DiscordSocketClient Client { get; private set; }
 
         private readonly IServiceProvider serviceProvider;
@@ -33,11 +30,10 @@ namespace NursingBot.Core
                     | GatewayIntents.GuildVoiceStates,
             });
 
-            this.CommandService = new CommandService(new CommandServiceConfig
+            this.CommandService = new InteractionService(this.Client, new InteractionServiceConfig
             {
                 LogLevel = LogSeverity.Info,
                 DefaultRunMode = RunMode.Async,
-                CaseSensitiveCommands = false,
             });
 
             this.Client.Log += OnReceiveLog;
@@ -52,11 +48,16 @@ namespace NursingBot.Core
             {
                 throw new ArgumentNullException(nameof(token));
             }
-            
-            Client.Ready += this.OnClientReady;
+                
 
             try
             {
+                await this.CommandService.AddModulesAsync(Assembly.GetEntryAssembly(), this.serviceProvider);
+                this.Client.InteractionCreated += this.OnInteractionCreated;
+                this.Client.ButtonExecuted += this.OnButtonExecuted;
+                this.Client.Ready += this.OnClientReady;
+                this.CommandService.SlashCommandExecuted += this.OnSlashCommandExecuted;
+
                 await this.Client.LoginAsync(TokenType.Bot, token);
                 await this.Client.StartAsync();
             }
@@ -110,13 +111,8 @@ namespace NursingBot.Core
         {
             try
             {
+                await RegisterCommands();
                 await this.Client.SetGameAsync(botStatus);
-                await this.CommandService.AddModulesAsync(Assembly.GetEntryAssembly(), this.serviceProvider);
-
-                this.Client.MessageReceived += HandleCommandAsync;
-#if DEBUG
-                this.CommandService.CommandExecuted += OnCommandExecuted;
-#endif
             }
             catch (AggregateException e)
             {
@@ -132,88 +128,55 @@ namespace NursingBot.Core
             {
                 await Log.Fatal(e);
             }
+            finally
+            {
+                this.Client.Ready -= OnClientReady;
+            }
         }
 
-        private async Task OnCommandExecuted(Optional<CommandInfo> commandInfo, ICommandContext context, IResult result)
+        private async Task OnButtonExecuted(SocketMessageComponent arg)
+        {
+            var context = new SocketInteractionContext<SocketMessageComponent>(this.Client, arg);
+            await this.CommandService.ExecuteCommandAsync(context, this.serviceProvider);
+        }
+
+        private async Task OnInteractionCreated(SocketInteraction arg)
+        {
+            try
+            {
+                var context = new SocketInteractionContext(this.Client, arg);
+                await this.CommandService.ExecuteCommandAsync(context, this.serviceProvider);
+            }
+            catch
+            {
+                throw;
+            }
+        }
+
+        private async Task OnSlashCommandExecuted(SlashCommandInfo commandInfo, IInteractionContext interactionContext, IResult result)
         {
             if (result.IsSuccess)
             {
                 return;
             }
-
+            
             var embed = new EmbedBuilder()
-                .WithTitle("실패")
+                .WithTitle($"{commandInfo.Name} 실패")
                 .WithDescription(result.ErrorReason)
                 .Build();
 
-            await context.Message.ReplyAsync(embed: embed);
+            await interactionContext.Interaction.RespondAsync(embed: embed, ephemeral: true);
         }
 
-        private async Task HandleCommandAsync(SocketMessage data)
+        private async Task RegisterCommands()
         {
-            if (data is not SocketUserMessage msg)
+            try
             {
-                return;
+                await this.CommandService.RegisterCommandsGloballyAsync(deleteMissing: true);
             }
-
-            // 봇의 메세지에는 반응하지 않습니다.
-            if (msg.Author.Id == this.Client.CurrentUser.Id || msg.Author.IsBot)
+            catch
             {
-                return;
-            }
-
-            // DM으로 받은 메세지에도 반응하지 않습니다.
-            if (msg.Channel.GetChannelType() == ChannelType.DM)
-            {
-                return;
-            }
-
-            var commandPrefix = string.Empty;
-
-            // DB 직접 수정을 대비해 캐시된 서버 정보를 사용하지 않습니다.
-            if (msg.Channel is SocketGuildChannel channel)
-            {
-                try
-                {
-                    var guildId = channel.Guild.Id;
-
-                    using var context = await Database.Instance.CreateDbContextAsync();
-
-                    var server = await context.Servers
-                        .Where(s => s.DiscordUID == guildId)
-                        .FirstOrDefaultAsync();
-                
-                    if (server != null)
-                    {
-                        Database.Cache(guildId, server);
-                        commandPrefix = server.Prefix;
-                    }
-                    else Database.ClearCache(guildId);
-                }
-                catch (Exception ex)
-                {
-                    await Log.Fatal(ex);
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(commandPrefix))
-            {
-                commandPrefix = DefaultCommandPrefix;
-            }
-
-            int pos = 0;
-
-            if (msg.HasStringPrefix(commandPrefix, ref pos))
-            {
-                try
-                {
-                    var context = new SocketCommandContext(this.Client, msg);
-                    _ = Task.Run(() => this.CommandService.ExecuteAsync(context, pos, this.serviceProvider));
-                }
-                catch (Exception ex)
-                {
-                    await Log.Fatal(ex);
-                }
+                throw;
             }
         }
     }

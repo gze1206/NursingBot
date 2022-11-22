@@ -10,8 +10,6 @@ namespace NursingBot.Features
 {
     public class CoreModule : InteractionModuleBase<SocketInteractionContext>
     {
-        private static readonly string DEBUG_SUMMARY = "DBG";
-
         [SlashCommand("help", "명령어 목록을 DM으로 전송합니다.")]
         public async Task HelpAsync()
         {
@@ -69,11 +67,11 @@ namespace NursingBot.Features
             }
         }
 
-        [SlashCommand("test", "DBG")]
-        [RequireAdminPermission]
-        public async Task TestAsync()
-        {
-            await Task.CompletedTask;
-        }
+        //[SlashCommand("test", "DBG")]
+        //[RequireAdminPermission]
+        //public async Task TestAsync()
+        //{
+        //    await Task.CompletedTask;
+        //}
     }
 }
