@@ -137,16 +137,16 @@ namespace NursingBot.Features
                     await context.SaveChangesAsync();
 
                     await transaction.CommitAsync();
+                    await this.Context.Interaction.FollowupAsync("파티 모집 공고를 등록했습니다!");
                 }
                 catch (Exception e)
                 {
                     await transaction.RollbackAsync();
                     await Log.Fatal(e);
-                    await this.Context.Interaction.RespondAsync($"모집 공고 등록에 실패했습니다...\n{e.Message}", ephemeral: true);
+                    await this.Context.Interaction.FollowupAsync($"모집 공고 등록에 실패했습니다...\n{e.Message}", ephemeral: true);
                     return;
                 }
 
-                await this.Context.Interaction.FollowupAsync("파티 모집 공고를 등록했습니다!");
             }
         }
 

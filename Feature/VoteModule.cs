@@ -72,18 +72,16 @@ namespace NursingBot.Feature
                 return;
             }
 
-            var embed = Build(this.Context.User, description, choices, null, false);
-
-            var msg = await channel.SendMessageAsync(embed: embed);
-            await msg.AddReactionsAsync(emojiList
-                .Take(choices.Length)
-                .Append(EMOJI_CLOSE));
 
             using var conn = await Database.Instance.CreateDbContextAsync();
             using var transaction = await conn.Database.BeginTransactionAsync();
 
             try
             {
+                var embed = Build(this.Context.User, description, choices, null, false);
+
+                var msg = await channel.SendMessageAsync(embed: embed);
+
                 var vote = new Vote
                 {
                     ServerId = server.Id,
@@ -93,17 +91,23 @@ namespace NursingBot.Feature
                     Choices = string.Join(';', choices),
                 };
 
+                await this.Context.Interaction.DeferAsync();
+
+                await msg.AddReactionsAsync(emojiList
+                    .Take(choices.Length)
+                    .Append(EMOJI_CLOSE));
+
                 await conn.Votes.AddAsync(vote);
                 await conn.SaveChangesAsync();
 
                 await transaction.CommitAsync();
-                await this.Context.Interaction.RespondAsync("투표가 준비되었습니다.");
+                await this.Context.Interaction.FollowupAsync("투표가 준비되었습니다.");
             }
             catch (Exception e)
             {
                 await transaction.RollbackAsync();
                 await Log.Fatal(e);
-                await this.Context.Interaction.RespondAsync($"투표 등록에 실패했습니다...\n{e.Message}", ephemeral: true);
+                await this.Context.Interaction.FollowupAsync($"투표 등록에 실패했습니다...\n{e.Message}", ephemeral: true);
             }
             
         }
