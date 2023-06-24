@@ -1,14 +1,13 @@
-namespace NursingBot.Logger
+namespace NursingBot.Logger;
+
+public enum LogLevel
 {
-    public enum LogLevel
-    {
-        ALL,
+    ALL,
 
-        INFO,
-        WARN,
-        ERROR,
-        FATAL,
+    INFO,
+    WARN,
+    ERROR,
+    FATAL,
 
-        NONE
-    }
+    NONE
 }

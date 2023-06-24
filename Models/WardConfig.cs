@@ -1,29 +1,28 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace NursingBot.Models
+namespace NursingBot.Models;
+
+[Table("wardConfigs")]
+public class WardConfig
 {
-    [Table("wardConfigs")]
-    public class WardConfig
-    {
-        [Key]
-        public ulong Id { get; set; }
+    [Key]
+    public ulong Id { get; set; }
 
-        public ulong ServerId { get; set; }
+    public ulong ServerId { get; set; }
 
-        [ForeignKey("ServerId")]
-        public Server? Server { get; set; }
+    [ForeignKey("ServerId")]
+    public Server Server { get; set; }
 
-        public ulong CategoryId { get; set; }
+    public ulong CategoryId { get; set; }
 
-        public ulong HospitalizationId { get; set; }
+    public ulong HospitalizationId { get; set; }
 
-        public bool IsDeleted { get; set; }
+    public bool IsDeleted { get; set; }
 
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-        public DateTime? DeletedAt { get; set; }
-    }
+    public DateTime? DeletedAt { get; set; }
 }

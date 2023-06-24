@@ -1,7 +1,6 @@
-namespace NursingBot.Features
+namespace NursingBot.Feature;
+
+public class NoRegisteredFeatureException : Exception
 {
-    public class NoRegisteredFeatureException : Exception
-    {
-        public static NoRegisteredFeatureException Instance => new();
-    }
+    public static NoRegisteredFeatureException Instance => new();
 }

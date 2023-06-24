@@ -1,92 +1,91 @@
 using System.Collections.Concurrent;
 using Newtonsoft.Json;
 
-namespace NursingBot.Logger
+namespace NursingBot.Logger;
+
+public class NoRegisteredLoggerException : Exception
 {
-    public class NoRegisteredLoggerException : Exception
+    public static NoRegisteredLoggerException Instance => new();
+}
+
+public static class Log
+{
+    public static LogLevel LogLevel
     {
-        public static NoRegisteredLoggerException Instance => new();
+        get => logLevel;
+        set => UpdateLogLevel(value);
     }
 
-    public static class Log
+    private static LogLevel logLevel = LogLevel.ALL;
+
+    private static readonly ConcurrentBag<ILogger> loggers = new();
+
+    public static async Task Add(ILogger logger)
     {
-        public static LogLevel LogLevel
+        await Task.Run(() => {
+            logger.LogLevel = logLevel;
+            loggers.Add(logger);
+        });
+    }
+
+    public static async Task Info(string message)
+    {
+        if (loggers.IsEmpty)
         {
-            get => logLevel;
-            set => UpdateLogLevel(value);
+            throw NoRegisteredLoggerException.Instance;
         }
 
-        private static LogLevel logLevel = LogLevel.ALL;
+        await Task.WhenAll(loggers.Select(l => l.Info(message)));
+    }
 
-        private static readonly ConcurrentBag<ILogger> loggers = new();
-
-        public static async Task Add(ILogger logger)
+    public static async Task Warn(string message)
+    {
+        if (loggers.IsEmpty)
         {
-            await Task.Run(() => {
-                logger.LogLevel = logLevel;
-                loggers.Add(logger);
-            });
+            throw NoRegisteredLoggerException.Instance;
         }
 
-        public static async Task Info(string message)
-        {
-            if (loggers.IsEmpty)
-            {
-                throw NoRegisteredLoggerException.Instance;
-            }
+        await Task.WhenAll(loggers.Select(l => l.Warn(message)));
+    }
 
-            await Task.WhenAll(loggers.Select(l => l.Info(message)));
+    public static async Task Error(string message)
+    {
+        if (loggers.IsEmpty)
+        {
+            throw NoRegisteredLoggerException.Instance;
         }
 
-        public static async Task Warn(string message)
-        {
-            if (loggers.IsEmpty)
-            {
-                throw NoRegisteredLoggerException.Instance;
-            }
+        await Task.WhenAll(loggers.Select(l => l.Error(message)));
+    }
 
-            await Task.WhenAll(loggers.Select(l => l.Warn(message)));
+    public static async Task Fatal(string message)
+    {
+        if (loggers.IsEmpty)
+        {
+            throw NoRegisteredLoggerException.Instance;
         }
 
-        public static async Task Error(string message)
-        {
-            if (loggers.IsEmpty)
-            {
-                throw NoRegisteredLoggerException.Instance;
-            }
+        await Task.WhenAll(loggers.Select(l => l.Fatal(message)));
+    }
 
-            await Task.WhenAll(loggers.Select(l => l.Error(message)));
+    public static Task Fatal(Exception e)
+        => Fatal($"{e.Message}\n{e.StackTrace}");
+
+    public static Task Fatal(Discord.Net.HttpException e)
+        => Fatal($"{e.Message}\n{JsonConvert.SerializeObject(e.Errors, Formatting.Indented)}");
+
+    private static void UpdateLogLevel(LogLevel value)
+    {
+        if (loggers.IsEmpty)
+        {
+            throw NoRegisteredLoggerException.Instance;
         }
 
-        public static async Task Fatal(string message)
+        logLevel = value;
+
+        foreach (var logger in loggers)
         {
-            if (loggers.IsEmpty)
-            {
-                throw NoRegisteredLoggerException.Instance;
-            }
-
-            await Task.WhenAll(loggers.Select(l => l.Fatal(message)));
-        }
-
-        public static Task Fatal(Exception e)
-            => Fatal($"{e.Message}\n{e.StackTrace}");
-
-        public static Task Fatal(Discord.Net.HttpException e)
-            => Fatal($"{e.Message}\n{JsonConvert.SerializeObject(e.Errors, Formatting.Indented)}");
-
-        private static void UpdateLogLevel(LogLevel value)
-        {
-            if (loggers.IsEmpty)
-            {
-                throw NoRegisteredLoggerException.Instance;
-            }
-
-            logLevel = value;
-
-            foreach (var logger in loggers)
-            {
-                logger.LogLevel = value;
-            }
+            logger.LogLevel = value;
         }
     }
 }

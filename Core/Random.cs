@@ -1,46 +1,45 @@
 using SRandom = System.Random;
 
-namespace NursingBot.Core
+namespace NursingBot.Core;
+
+public static class Random
 {
-    public static class Random
-    {
-        private static readonly SRandom global = new();
+    private static readonly SRandom global = new();
         
-        [ThreadStatic]
-        private static SRandom? local = null;
+    [ThreadStatic]
+    private static SRandom? local = null;
 
-        private static void CheckInstance()
+    private static void CheckInstance()
+    {
+        if (local == null)
         {
-            if (local == null)
+            int seed;
+            lock (global)
             {
-                int seed;
-                lock (global)
-                {
-                    seed = global.Next();
-                }
-                local = new(seed);
+                seed = global.Next();
             }
+            local = new(seed);
         }
+    }
 
-        public static int Next()
-        {
-            CheckInstance();
+    public static int Next()
+    {
+        CheckInstance();
 
-            return local!.Next();
-        }
+        return local!.Next();
+    }
 
-        public static int Next(int max)
-        {
-            CheckInstance();
+    public static int Next(int max)
+    {
+        CheckInstance();
 
-            return local!.Next(max);
-        }
+        return local!.Next(max);
+    }
 
-        public static int Next(int min, int max)
-        {
-            CheckInstance();
+    public static int Next(int min, int max)
+    {
+        CheckInstance();
 
-            return local!.Next(min, max);
-        }
+        return local!.Next(min, max);
     }
 }
