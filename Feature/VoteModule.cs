@@ -13,34 +13,30 @@ namespace NursingBot.Feature;
 [RequireRegister]
 public class VoteModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private const int MAX_REACTIONS = 19;
+    private const int MaxReactions = 19;
 
-    private static readonly List<string> emojiStringList = new();
-    private static readonly List<Emoji> emojiList = new();
-    private static readonly string STR_CLOSE = "🚫";
-    private static readonly Emoji EMOJI_CLOSE = Emoji.Parse(STR_CLOSE);
+    private static readonly List<string> EmojiStringList = new();
+    private static readonly List<Emoji> EmojiList = new();
+    private static readonly string StrClose = "🚫";
+    private static readonly Emoji EmojiClose = Emoji.Parse(StrClose);
 
     public override void OnModuleBuilding(InteractionService commandService, ModuleInfo moduleInfo)
     {
         base.OnModuleBuilding(commandService, moduleInfo);
 
-        Global.Bot!.Client.ReactionAdded += (_, _, reaction) =>
+        if (Global.Bot == null)
         {
-            _ = OnReactionAdded(reaction);
-            return Task.CompletedTask;
-        };
+            return;
+        }
 
-        Global.Bot!.Client.ReactionRemoved += (_, _, reaction) =>
-        {
-            _ = OnReactionRemoved(reaction);
-            return Task.CompletedTask;
-        };
+        Global.Bot.Client.ReactionAdded += (_, _, reaction) => OnReactionAdded(reaction);
+        Global.Bot.Client.ReactionRemoved += (_, _, reaction) => OnReactionRemoved(reaction);
 
         for (int i = 0x01F1E6, max = 0x01F1FF; i <= max; i++)
         {
             var str = char.ConvertFromUtf32(i);
-            emojiStringList.Add(str);
-            emojiList.Add(Emoji.Parse(str));
+            EmojiStringList.Add(str);
+            EmojiList.Add(Emoji.Parse(str));
         }
     }
 
@@ -66,9 +62,9 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        if (choices.Length > MAX_REACTIONS)
+        if (choices.Length > MaxReactions)
         {
-            await this.Context.Interaction.RespondAsync($"디스코드 정책 상 투표 항목은 최대 {MAX_REACTIONS}까지만 가능합니다.", ephemeral: true);
+            await this.Context.Interaction.RespondAsync($"디스코드 정책 상 투표 항목은 최대 {MaxReactions}까지만 가능합니다.", ephemeral: true);
             return;
         }
 
@@ -93,9 +89,9 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
 
             await this.Context.Interaction.DeferAsync();
 
-            await msg.AddReactionsAsync(emojiList
+            await msg.AddReactionsAsync(EmojiList
                 .Take(choices.Length)
-                .Append(EMOJI_CLOSE));
+                .Append(EmojiClose));
 
             await conn.Votes.AddAsync(vote);
             await conn.SaveChangesAsync();
@@ -136,7 +132,7 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
         var sb = new StringBuilder();
         for (int i = 0, max = choices.Length; i < max; i++)
         {
-            var str = emojiStringList[i];
+            var str = EmojiStringList[i];
             var memberText = string.Empty;
 
             if (
@@ -153,13 +149,13 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
                 memberText = "(없음)";
             }
 
-            sb.AppendLine($"**{choices[i]}** : {emojiList[i]}");
+            sb.AppendLine($"**{choices[i]}** : {EmojiList[i]}");
             sb.AppendLine(memberText);
             sb.AppendLine();
         }
         builder.AddField("투표 항목", sb.ToString());
 
-        builder.AddField("투표 마감", $"{STR_CLOSE}를 눌러 투표를 마감할 수 있습니다.");
+        builder.AddField("투표 마감", $"{StrClose}를 눌러 투표를 마감할 수 있습니다.");
 
         return builder.Build();
     }
@@ -213,10 +209,10 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
             }
 
             var choices = vote.Choices?.Split(';') ?? Array.Empty<string>();
-            var emojis = emojiList.Take(choices.Length).ToArray();
-            var emojiStrings = emojiStringList.Take(choices.Length).ToArray();
+            var emojis = EmojiList.Take(choices.Length).ToArray();
+            var emojiStrings = EmojiStringList.Take(choices.Length).ToArray();
 
-            if (!emojiName.Equals(STR_CLOSE) && !emojiStrings.Contains(emojiName))
+            if (!emojiName.Equals(StrClose) && !emojiStrings.Contains(emojiName))
             {
                 await transaction.RollbackAsync();
                 return;
@@ -237,7 +233,7 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
                 usersPerEmoji[emojiStrings[i]] = members;
             }
 
-            if (emojiName.Equals(STR_CLOSE))
+            if (emojiName.Equals(StrClose))
             {
                 if (vote.IsClosed)
                 {
@@ -308,10 +304,10 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
             }
 
             var choices = vote.Choices?.Split(';') ?? Array.Empty<string>();
-            var emojis = emojiList.Take(choices.Length).ToArray();
-            var emojiStrings = emojiStringList.Take(choices.Length).ToArray();
+            var emojis = EmojiList.Take(choices.Length).ToArray();
+            var emojiStrings = EmojiStringList.Take(choices.Length).ToArray();
 
-            if (!emojiName.Equals(STR_CLOSE) && !emojiStrings.Contains(emojiName))
+            if (!emojiName.Equals(StrClose) && !emojiStrings.Contains(emojiName))
             {
                 await transaction.RollbackAsync();
                 return;
@@ -332,9 +328,9 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
                 usersPerEmoji[emojiStrings[i]] = members;
             }
 
-            if (emojiName.Equals(STR_CLOSE))
+            if (emojiName.Equals(StrClose))
             {
-                var isClose = await msg.GetReactionUsersAsync(EMOJI_CLOSE, int.MaxValue)
+                var isClose = await msg.GetReactionUsersAsync(EmojiClose, int.MaxValue)
                     .Flatten()
                     .Where(u => !u.IsBot)
                     .CountAsync() > 0;

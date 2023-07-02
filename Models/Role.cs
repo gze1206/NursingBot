@@ -23,7 +23,7 @@ public class RoleManager
 
     public string? Description { get; set; }
 
-    public Role[] Roles { get; set; } = null!;
+    public ICollection<Role> Roles { get; set; } = new List<Role>();
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     

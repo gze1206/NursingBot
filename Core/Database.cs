@@ -79,7 +79,9 @@ public partial class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<RoleManager>()
             .HasMany<Role>(r => r.Roles)
-            .WithOne(r => r.RoleManager);
+            .WithOne(r => r.RoleManager)
+            .HasForeignKey(r => r.RoleManagerId)
+            .IsRequired();
 
         base.OnModelCreating(modelBuilder);
     }
