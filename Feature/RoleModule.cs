@@ -1,3 +1,4 @@
+using System.Text;
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -194,6 +195,8 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
             {
                 throw new Exception($"{emojiString} 이모지를 찾지 못했습니다.");
             }
+            
+            var encodedEmoji = StringToBytes(emojiString);
 
             var msg = await channel.GetMessageAsync(manager.MessageId);
             if (msg == null)
@@ -201,7 +204,7 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
                 throw new Exception($"{manager.MessageId} 메시지를 찾지 못했습니다.");
             }
 
-            var hasDuplicate = await context.Roles.AnyAsync(r => r.RoleManagerId == managerId && r.Emoji == emoji.Name);
+            var hasDuplicate = await context.Roles.AnyAsync(r => r.RoleManagerId == managerId && r.Emoji.SequenceEqual(encodedEmoji));
             if (hasDuplicate)
             {
                 throw new Exception($"{managerId} - {emojiString} 이미 등록된 이모지입니다.");
@@ -220,7 +223,8 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
             {
                 Description = description,
                 DiscordRoleId = discordRole.Id,
-                Emoji = emoji.Name,
+                Emoji = encodedEmoji,
+                EmojiForDebug = emojiString,
                 RoleManagerId = managerId
             };
             await context.Roles.AddAsync(role);
@@ -296,10 +300,12 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
                 throw new Exception($"{discordRole.Id} 역할을 찾지 못했습니다.");
             }
 
-            var emoji = ParseEmoji(this.Context.Guild, role.Emoji);
+            var decodedEmoji = BytesToString(role.Emoji);
+
+            var emoji = ParseEmoji(this.Context.Guild, decodedEmoji);
             if (emoji == null)
             {
-                throw new Exception($"{role.Emoji} 올바른 이모지가 아닙니다.");
+                throw new Exception($"{decodedEmoji} 올바른 이모지가 아닙니다.");
             }
             await msg.RemoveReactionAsync(emoji, Global.Bot.Client.CurrentUser);
             context.Roles.Remove(role);
@@ -339,7 +345,8 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
         {
             try
             {
-                var emoji = ParseEmoji(channel.Guild, role.Emoji);
+                var decodedEmoji = BytesToString(role.Emoji);
+                var emoji = ParseEmoji(channel.Guild, decodedEmoji);
                 var discordRole = channel.Guild.GetRole(role.DiscordRoleId);
                 embed.AddField($"{emoji} : {discordRole.Name}", role.Description ?? string.Empty, inline: true);
             }
@@ -363,7 +370,7 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
             [1..]
             .Split(':');
             
-        IEmote? emoji = null;
+        IEmote? emoji;
 
         if (emojiTokens.Length == 2 && ulong.TryParse(emojiTokens[1], out var emojiId))
         {
@@ -414,8 +421,10 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
                 return;
             }
 
+            var encodedEmoji = StringToBytes(emojiName);
+
             var role = await conn.Roles
-                .FirstOrDefaultAsync(r => r.RoleManagerId == manager.Id && r.Emoji == emojiName);
+                .FirstOrDefaultAsync(r => r.RoleManagerId == manager.Id && r.Emoji.SequenceEqual(encodedEmoji));
 
             if (role == null)
             {
@@ -438,6 +447,7 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
 
             await guildUser.AddRoleAsync(discordRole);
             await transaction.CommitAsync();
+            await Log.Info($"역할 부여 : {guildUser.Username} | {discordRole.Name} | {emojiName}");
         }
         catch (Exception e)
         {
@@ -483,8 +493,10 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
                 return;
             }
 
+            var encodedEmoji = StringToBytes(emojiName);
+
             var role = await conn.Roles
-                .FirstOrDefaultAsync(r => r.RoleManagerId == manager.Id && r.Emoji == emojiName);
+                .FirstOrDefaultAsync(r => r.RoleManagerId == manager.Id && r.Emoji.SequenceEqual(encodedEmoji));
 
             if (role == null)
             {
@@ -513,6 +525,7 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
 
             await guildUser.RemoveRoleAsync(discordRole);
             await transaction.CommitAsync();
+            await Log.Info($"역할 제거 : {guildUser.Username} | {discordRole.Name} | {emojiName}");
         }
         catch (Exception e)
         {
@@ -520,6 +533,9 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
             await Log.Fatal(e);
         }
     }
+
+    private static byte[] StringToBytes(string str) => Encoding.UTF8.GetBytes(str);
+    private static string BytesToString(byte[] bytes) => Encoding.UTF8.GetString(bytes);
 
     private class RoleManagerAutocompleteHandler : AutocompleteHandler
     {

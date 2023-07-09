@@ -8,7 +8,7 @@ public class Program
 {
     public static Task? Main(string[] _) => MainAsync();
 
-    public static async Task MainAsync()
+    private static async Task MainAsync()
     {
         try
         {
@@ -56,6 +56,7 @@ public class Program
             Database = DotNetEnv.Env.GetString("DB_NAME"),
             UserID = DotNetEnv.Env.GetString("DB_USER"),
             Password = DotNetEnv.Env.GetString("DB_PW"),
+            CharacterSet = "UTF-8",
         };
 
         return conn.ConnectionString;

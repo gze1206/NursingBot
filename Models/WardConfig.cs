@@ -12,7 +12,7 @@ public class WardConfig
     public ulong ServerId { get; set; }
 
     [ForeignKey("ServerId")]
-    public Server Server { get; set; }
+    public Server Server { get; set; } = default!;
 
     public ulong CategoryId { get; set; }
 
