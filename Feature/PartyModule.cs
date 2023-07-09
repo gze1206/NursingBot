@@ -388,16 +388,12 @@ public class PartyModule : InteractionModuleBase<SocketInteractionContext>
     {
         base.OnModuleBuilding(commandService, moduleinfo);
 
-        Global.Bot!.Client.ReactionAdded += (_, _, reaction) =>
+        if (Global.Bot == null)
         {
-            _ = OnReactionAdded(reaction);
-            return Task.CompletedTask;
-        };
-
-        Global.Bot!.Client.ReactionRemoved += (_, _, reaction) =>
-        {
-            _ = OnReactionRemoved(reaction);
-            return Task.CompletedTask;
-        };
+            return;
+        }
+        
+        Global.Bot.OnReactionAdded += (_, _, reaction) => OnReactionAdded(reaction);
+        Global.Bot.OnReactionRemoved += (_, _, reaction) => OnReactionRemoved(reaction);
     }
 }

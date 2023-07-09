@@ -18,6 +18,12 @@ public class Bot
     public InteractionService CommandService { get; private set; }
     public DiscordSocketClient Client { get; private set; }
 
+    public delegate Task ReactionCallback(Cacheable<IUserMessage, ulong> userMessage,
+        Cacheable<IMessageChannel, ulong> messageChannel, SocketReaction reaction);
+
+    public event ReactionCallback OnReactionAdded = (_,_,_) => Task.CompletedTask;
+    public event ReactionCallback OnReactionRemoved = (_,_,_) => Task.CompletedTask;
+
     private readonly IServiceProvider serviceProvider;
 
     public Bot()
@@ -113,6 +119,8 @@ public class Bot
         {
             await RegisterCommands();
             await this.Client.SetGameAsync(botStatus);
+            this.Client.ReactionAdded += this._OnReactionAdded;
+            this.Client.ReactionRemoved += this._OnReactionRemoved;
         }
         catch (AggregateException e)
         {
@@ -177,6 +185,32 @@ public class Bot
         catch
         {
             throw;
+        }
+    }
+
+    private async Task _OnReactionAdded(Cacheable<IUserMessage, ulong> userMessage,
+        Cacheable<IMessageChannel, ulong> messageChannel, SocketReaction reaction)
+    {
+        try
+        {
+            await this.OnReactionAdded(userMessage, messageChannel, reaction);
+        }
+        catch (Exception e)
+        {
+            await Log.Fatal(e);
+        }
+    }
+    
+    private async Task _OnReactionRemoved(Cacheable<IUserMessage, ulong> userMessage,
+        Cacheable<IMessageChannel, ulong> messageChannel, SocketReaction reaction)
+    {
+        try
+        {
+            await this.OnReactionRemoved(userMessage, messageChannel, reaction);
+        }
+        catch (Exception e)
+        {
+            await Log.Fatal(e);
         }
     }
 }

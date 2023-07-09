@@ -146,8 +146,8 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
             return;
         }
 
-        Global.Bot.Client.ReactionAdded += (_, _, reaction) => OnReactionAdded(reaction);
-        Global.Bot.Client.ReactionRemoved += (_, _, reaction) => OnReactionRemoved(reaction);
+        Global.Bot.OnReactionAdded += (_, _, reaction) => OnReactionAdded(reaction);
+        Global.Bot.OnReactionRemoved += (_, _, reaction) => OnReactionRemoved(reaction);
     }
 
     [SlashCommand("add", "부여 가능한 역할을 등록합니다.")]
@@ -512,12 +512,6 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
 
             var discordRole = guildUser.Guild.GetRole(role.DiscordRoleId);
             if (discordRole == null)
-            {
-                await transaction.RollbackAsync();
-                return;
-            }
-
-            if (guildUser.Roles.All(r => r.Id != discordRole.Id))
             {
                 await transaction.RollbackAsync();
                 return;
