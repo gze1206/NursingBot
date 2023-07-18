@@ -396,6 +396,15 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         var emojiName = reaction.Emote.Name;
+        if (reaction.Emote is Emote emote)
+        {
+            var found = channel.Guild.Emotes.FirstOrDefault(e => e.Id == emote.Id && e.Name == emote.Name);
+            if (found != null)
+            {
+                emojiName = $"<:{found.Name}:{found.Id}>";
+            }
+        }
+        
         await using var conn = await Database.Instance.CreateDbContextAsync();
         await using var transaction = await conn.Database.BeginTransactionAsync();
 
@@ -468,6 +477,15 @@ public class RoleModule : InteractionModuleBase<SocketInteractionContext>
         }
 
         var emojiName = reaction.Emote.Name;
+        if (reaction.Emote is Emote emote)
+        {
+            var found = channel.Guild.Emotes.FirstOrDefault(e => e.Id == emote.Id && e.Name == emote.Name);
+            if (found != null)
+            {
+                emojiName = $"<:{found.Name}:{found.Id}>";
+            }
+        }
+        
         await using var conn = await Database.Instance.CreateDbContextAsync();
         await using var transaction = await conn.Database.BeginTransactionAsync();
 
