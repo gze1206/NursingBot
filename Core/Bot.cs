@@ -13,7 +13,7 @@ namespace NursingBot.Core;
 
 public class Bot
 {
-    private static readonly string botStatus = "'/help'로 명령어 목록을 볼 수 있다고 안내";
+    private const string BotStatus = "'/help'로 명령어 목록을 볼 수 있다고 안내";
 
     public InteractionService CommandService { get; private set; }
     public DiscordSocketClient Client { get; private set; }
@@ -21,10 +21,13 @@ public class Bot
     public delegate Task ReactionCallback(Cacheable<IUserMessage, ulong> userMessage,
         Cacheable<IMessageChannel, ulong> messageChannel, SocketReaction reaction);
 
+    public delegate Task ButtonCallback(string[] identifierTokens, SocketInteractionContext<SocketMessageComponent> context);
+
     public event ReactionCallback OnReactionAdded = (_,_,_) => Task.CompletedTask;
     public event ReactionCallback OnReactionRemoved = (_,_,_) => Task.CompletedTask;
 
-    private readonly IServiceProvider serviceProvider;
+    private readonly Dictionary<Identifier, ButtonCallback> _buttonHandlers = new();
+    private readonly IServiceProvider _serviceProvider;
 
     public Bot()
     {
@@ -45,7 +48,7 @@ public class Bot
         this.Client.Log += OnReceiveLog;
         this.CommandService.Log += OnReceiveLog;
 
-        this.serviceProvider = ConfigureServices();
+        this._serviceProvider = ConfigureServices();
     }
 
     public async Task Initialize(string token)
@@ -58,11 +61,11 @@ public class Bot
 
         try
         {
-            await this.CommandService.AddModulesAsync(Assembly.GetEntryAssembly(), this.serviceProvider);
+            await this.CommandService.AddModulesAsync(Assembly.GetEntryAssembly(), this._serviceProvider);
             this.Client.InteractionCreated += this.OnInteractionCreated;
             this.Client.ButtonExecuted += this.OnButtonExecuted;
             this.Client.Ready += this.OnClientReady;
-            this.CommandService.SlashCommandExecuted += this.OnSlashCommandExecuted;
+            this.CommandService.SlashCommandExecuted += OnSlashCommandExecuted;
 
             await this.Client.LoginAsync(TokenType.Bot, token);
             await this.Client.StartAsync();
@@ -72,6 +75,9 @@ public class Bot
             await Log.Fatal(e);
         }
     }
+    
+    public void RegisterButtonHandler(Identifier identifier, ButtonCallback handler) =>
+        this._buttonHandlers.Add(identifier, handler);
 
     private static async Task OnReceiveLog(LogMessage message)
     {
@@ -118,7 +124,7 @@ public class Bot
         try
         {
             await RegisterCommands();
-            await this.Client.SetGameAsync(botStatus);
+            await this.Client.SetGameAsync(BotStatus);
             this.Client.ReactionAdded += this._OnReactionAdded;
             this.Client.ReactionRemoved += this._OnReactionRemoved;
         }
@@ -145,23 +151,41 @@ public class Bot
     private async Task OnButtonExecuted(SocketMessageComponent arg)
     {
         var context = new SocketInteractionContext<SocketMessageComponent>(this.Client, arg);
-        await this.CommandService.ExecuteCommandAsync(context, this.serviceProvider);
+        var button = arg.Data;
+        
+        if (button == null)
+        {
+            return;
+        }
+
+        var identifierTokens = button.CustomId.Split(Identifier.Separator);
+        var topLevelIdentifierName = identifierTokens.FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(topLevelIdentifierName))
+        {
+            return;
+        }
+
+        var identifier = new Identifier(topLevelIdentifierName);
+
+        if (!this._buttonHandlers.TryGetValue(identifier, out var handler))
+        {
+            await Log.Fatal($"알 수 없는 식별자입니다 : {topLevelIdentifierName} (버튼명 : {button.CustomId})");
+            return;
+        }
+
+        await handler(identifierTokens[1..], context);
+        
+        await this.CommandService.ExecuteCommandAsync(context, this._serviceProvider);
     }
 
     private async Task OnInteractionCreated(SocketInteraction arg)
     {
-        try
-        {
-            var context = new SocketInteractionContext(this.Client, arg);
-            await this.CommandService.ExecuteCommandAsync(context, this.serviceProvider);
-        }
-        catch
-        {
-            throw;
-        }
+        var context = new SocketInteractionContext(this.Client, arg);
+        await this.CommandService.ExecuteCommandAsync(context, this._serviceProvider);
     }
 
-    private async Task OnSlashCommandExecuted(SlashCommandInfo commandInfo, IInteractionContext interactionContext, IResult result)
+    private static async Task OnSlashCommandExecuted(SlashCommandInfo commandInfo, IInteractionContext interactionContext, IResult result)
     {
         if (result.IsSuccess)
         {
@@ -178,14 +202,7 @@ public class Bot
 
     private async Task RegisterCommands()
     {
-        try
-        {
-            await this.CommandService.RegisterCommandsGloballyAsync(deleteMissing: true);
-        }
-        catch
-        {
-            throw;
-        }
+        await this.CommandService.RegisterCommandsGloballyAsync(deleteMissing: true);
     }
 
     private async Task _OnReactionAdded(Cacheable<IUserMessage, ulong> userMessage,

@@ -1,5 +1,6 @@
 ﻿using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
 using NursingBot.Core;
 using NursingBot.Feature.Preconditions;
 using NursingBot.Logger;
@@ -9,6 +10,20 @@ namespace NursingBot.Feature;
 [RequireRegister]
 public class TeamModule : InteractionModuleBase<SocketInteractionContext>
 {
+    private static Identifier Identifier = new Identifier("TEAM");
+    
+    public override void OnModuleBuilding(InteractionService commandService, ModuleInfo module)
+    {
+        base.OnModuleBuilding(commandService, module);
+
+        if (Global.Bot == null)
+        {
+            return;
+        }
+        
+        Global.Bot.RegisterButtonHandler(Identifier, OnButtonClicked);
+    }
+
     [SlashCommand("team", "무작위로 팀을 나눕니다")]
     public async Task Build(
         [Summary("teams", "팀 형식을 입력해주세요. ex - 5v5, 2v2v2v2v2. 기본값 5v5")]
@@ -54,15 +69,17 @@ public class TeamModule : InteractionModuleBase<SocketInteractionContext>
                 .WithTitle("팀 추첨")
                 .WithDescription("찢어져야 하는 인원은 같은 그룹을 선택해주세요");
 
+            var dataIdentifier = Identifier.Sub("test");
+
             var buttons = new ComponentBuilder();
             for (var i = 1; i <= groups; i++)
             {
-                buttons.WithButton($"{i}번 그룹", i.ToString());
+                buttons.WithButton($"{i}번 그룹", dataIdentifier.Sub(i));
             }
 
-            buttons.WithButton("추첨 종료", "quit", ButtonStyle.Danger, row: 1);
-            buttons.WithButton("재추첨", "shuffle", ButtonStyle.Secondary, row: 1);
-            buttons.WithButton("팀 확정", "submit", ButtonStyle.Success, row: 1);
+            buttons.WithButton("추첨 종료", dataIdentifier.Sub("QUIT"), ButtonStyle.Danger, row: 1);
+            buttons.WithButton("재추첨", dataIdentifier.Sub("SHUFFLE"), ButtonStyle.Secondary, row: 1);
+            buttons.WithButton("팀 확정", dataIdentifier.Sub("SUBMIT"), ButtonStyle.Success, row: 1);
             
             await this.Context.Interaction.FollowupAsync(embed: embed.Build(), components: buttons.Build());
         }
@@ -79,5 +96,16 @@ public class TeamModule : InteractionModuleBase<SocketInteractionContext>
         var tokens = teamStr.ToLowerInvariant().Split('v');
         var teams = tokens.Select(int.Parse).ToArray();
         return (teams, teams.Sum());
+    }
+    
+    private static async Task OnButtonClicked(string[] identifierTokens, SocketInteractionContext<SocketMessageComponent> context)
+    {
+        if (identifierTokens[0] != "test")
+        {
+            await Log.Fatal("모르는 Identifier");
+            return;
+        }
+
+        await context.Interaction.RespondAsync();
     }
 }
