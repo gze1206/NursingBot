@@ -10,7 +10,7 @@ namespace NursingBot.Feature;
 [RequireRegister]
 public class TeamModule : InteractionModuleBase<SocketInteractionContext>
 {
-    private static Identifier Identifier = new Identifier("TEAM");
+    private static readonly Identifier Identifier = new("TEAM");
     
     public override void OnModuleBuilding(InteractionService commandService, ModuleInfo module)
     {

@@ -13,7 +13,7 @@ namespace NursingBot.Core;
 
 public class Bot
 {
-    private const string BotStatus = "'/help'로 명령어 목록을 볼 수 있다고 안내";
+    private const string BotStatus = "/를 눌러 명령어 목록을 볼 수 있다고 안내";
 
     public InteractionService CommandService { get; private set; }
     public DiscordSocketClient Client { get; private set; }
