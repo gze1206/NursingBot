@@ -72,9 +72,17 @@ public class TeamModule : InteractionModuleBase<SocketInteractionContext>
             var dataIdentifier = Identifier.Sub("test");
 
             var buttons = new ComponentBuilder();
-            for (var i = 1; i <= groups; i++)
+
+            if (0 < groups)
             {
-                buttons.WithButton($"{i}번 그룹", dataIdentifier.Sub(i));
+                for (var i = 1; i <= groups; i++)
+                {
+                    buttons.WithButton($"{i}번 그룹", dataIdentifier.Sub(i));
+                }
+            }
+            else
+            {
+                buttons.WithButton("추첨 참여", dataIdentifier.Sub(1));
             }
 
             buttons.WithButton("추첨 종료", dataIdentifier.Sub("QUIT"), ButtonStyle.Danger, row: 1);
