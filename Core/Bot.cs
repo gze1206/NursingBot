@@ -34,6 +34,7 @@ public class Bot
         this.Client = new DiscordSocketClient(new DiscordSocketConfig
         {
             GatewayIntents = GatewayIntents.GuildMessages
+                             | GatewayIntents.GuildMembers
                              | GatewayIntents.GuildMessageReactions
                              | GatewayIntents.Guilds
                              | GatewayIntents.GuildVoiceStates,

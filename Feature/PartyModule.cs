@@ -359,7 +359,7 @@ public class PartyModule : InteractionModuleBase<SocketInteractionContext>
                 var member = await msg.GetReactionUsersAsync(EMOJI_OK, int.MaxValue)
                     .Flatten()
                     .Where(u => !u.IsBot)
-                    .Select(u => channel.Guild.GetUser(u.Id))
+                    .Select(u => channel.Guild.GetUser(u.Id) ?? throw new InvalidOperationException($"{u.Id}를 통해 {channel.Guild.Name}에서 유저를 조회하지 못했습니다."))
                     .ToArrayAsync();
 
                 var embed = Build(author, recruit.Description, recruit.Date, member, isClose);
