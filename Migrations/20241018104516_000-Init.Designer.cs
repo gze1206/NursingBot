@@ -11,8 +11,8 @@ using NursingBot.Core;
 namespace NursingBot.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20221122174441_003-servers-remove-prefix")]
-    partial class _003serversremoveprefix
+    [Migration("20241018104516_000-Init")]
+    partial class _000Init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -84,6 +84,78 @@ namespace NursingBot.Migrations
                     b.HasIndex("PartyChannelId");
 
                     b.ToTable("partyRecruits");
+                });
+
+            modelBuilder.Entity("NursingBot.Models.Role", b =>
+                {
+                    b.Property<ulong>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("longtext");
+
+                    b.Property<ulong>("DiscordRoleId")
+                        .HasColumnType("bigint unsigned");
+
+                    b.Property<byte[]>("Emoji")
+                        .IsRequired()
+                        .HasColumnType("longblob");
+
+                    b.Property<string>("EmojiForDebug")
+                        .IsRequired()
+                        .HasColumnType("longtext")
+                        .HasComment("유니코드 코드 페이지 문제인지 string을 사용해서 emoji의 정상적인 쿼리가 불가합니다. 바이트로 인코딩해서 쿼리하되, 디버깅 시 편의성을 위해 문자열은 함께 기록합니다.");
+
+                    b.Property<ulong>("RoleManagerId")
+                        .HasColumnType("bigint unsigned");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoleManagerId");
+
+                    b.ToTable("roles");
+                });
+
+            modelBuilder.Entity("NursingBot.Models.RoleManager", b =>
+                {
+                    b.Property<ulong>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint unsigned");
+
+                    b.Property<ulong>("ChannelId")
+                        .HasColumnType("bigint unsigned");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("longtext");
+
+                    b.Property<ulong>("MessageId")
+                        .HasColumnType("bigint unsigned");
+
+                    b.Property<ulong>("ServerId")
+                        .HasColumnType("bigint unsigned");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServerId");
+
+                    b.ToTable("roleManagers");
                 });
 
             modelBuilder.Entity("NursingBot.Models.Server", b =>
@@ -201,6 +273,28 @@ namespace NursingBot.Migrations
                     b.Navigation("PartyChannel");
                 });
 
+            modelBuilder.Entity("NursingBot.Models.Role", b =>
+                {
+                    b.HasOne("NursingBot.Models.RoleManager", "RoleManager")
+                        .WithMany("Roles")
+                        .HasForeignKey("RoleManagerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RoleManager");
+                });
+
+            modelBuilder.Entity("NursingBot.Models.RoleManager", b =>
+                {
+                    b.HasOne("NursingBot.Models.Server", "Server")
+                        .WithMany()
+                        .HasForeignKey("ServerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Server");
+                });
+
             modelBuilder.Entity("NursingBot.Models.Vote", b =>
                 {
                     b.HasOne("NursingBot.Models.Server", "Server")
@@ -221,6 +315,11 @@ namespace NursingBot.Migrations
                         .IsRequired();
 
                     b.Navigation("Server");
+                });
+
+            modelBuilder.Entity("NursingBot.Models.RoleManager", b =>
+                {
+                    b.Navigation("Roles");
                 });
 #pragma warning restore 612, 618
         }
