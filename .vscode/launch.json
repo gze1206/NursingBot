@@ -13,7 +13,15 @@
             "args": [],
             "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
-            "stopAtEntry": false
+            "stopAtEntry": false,
+            "pipeTransport": {
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "bash",
+                "pipeArgs": ["-c"],
+                "debuggerPath": "${HOME}/.local/netcoredbg/netcoredbg.exe",
+                "debuggerArgs": ["--interpreter=vscode"],
+                "quoteArgs": true
+            }
         },
         {
             "name": ".NET Core Attach",

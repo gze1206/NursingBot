@@ -97,6 +97,8 @@ public class PartyModule : InteractionModuleBase<SocketInteractionContext>
 
             try
             {
+                await this.Context.Interaction.DeferAsync();
+
                 var partyChannel = await context.PartyChannels
                     .FirstOrDefaultAsync(p => p.ServerId == server.Id);
                     
@@ -117,8 +119,6 @@ public class PartyModule : InteractionModuleBase<SocketInteractionContext>
                     Description = description,
                     Date = date,
                 };
-
-                await this.Context.Interaction.DeferAsync();
 
                 await msg.AddReactionsAsync(new[]
                 {

@@ -74,6 +74,8 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
 
         try
         {
+            await this.Context.Interaction.DeferAsync();
+
             var embed = Build(this.Context.User, description, choices, null, false);
 
             var msg = await channel.SendMessageAsync(embed: embed);
@@ -86,8 +88,6 @@ public class VoteModule : InteractionModuleBase<SocketInteractionContext>
                 Description = description,
                 Choices = string.Join(';', choices),
             };
-
-            await this.Context.Interaction.DeferAsync();
 
             await msg.AddReactionsAsync(EmojiList
                 .Take(choices.Length)
